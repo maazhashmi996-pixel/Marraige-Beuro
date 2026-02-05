@@ -25,7 +25,6 @@ interface Inquiry {
     date?: string;
 }
 
-/* ================= COMPONENT ================= */
 export default function AdminDashboard() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [activeTab, setActiveTab] = useState<"profiles" | "inquiries">("profiles");
@@ -44,7 +43,6 @@ export default function AdminDashboard() {
     });
 
     const [loginCreds, setLoginCreds] = useState({ email: "", password: "" });
-
     const [adminUser, setAdminUser] = useState({
         name: "Admin User",
         role: "Super Admin",
@@ -55,7 +53,6 @@ export default function AdminDashboard() {
 
     /* ================= INITIAL LOAD ================= */
     useEffect(() => {
-        // Load admin from localStorage or set defaults
         const savedAdmin = JSON.parse(localStorage.getItem("adminUser") || "null");
         if (savedAdmin) setAdminUser(savedAdmin);
         else localStorage.setItem("adminUser", JSON.stringify(adminUser));
@@ -68,33 +65,17 @@ export default function AdminDashboard() {
     /* ================= HANDLERS ================= */
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        const savedAdmin = JSON.parse(localStorage.getItem("adminUser") || "null");
-        if (
-            loginCreds.email === savedAdmin.email &&
-            loginCreds.password === savedAdmin.password
-        ) {
+        if (loginCreds.email === adminUser.email && loginCreds.password === adminUser.password) {
             localStorage.setItem("isAdmin", "true");
             setIsLoggedIn(true);
         } else {
-            alert("Invalid Credentials");
+            alert("Ghalat Email ya Password!");
         }
     };
 
     const handleLogout = () => {
         localStorage.removeItem("isAdmin");
         window.location.reload();
-    };
-
-    const handleAdminImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const updatedAdmin = { ...adminUser, avatar: reader.result as string };
-            setAdminUser(updatedAdmin);
-            localStorage.setItem("adminUser", JSON.stringify(updatedAdmin));
-        };
-        reader.readAsDataURL(file);
     };
 
     const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,140 +93,132 @@ export default function AdminDashboard() {
             updated = profiles.map((p) => (p.id === editingId ? { ...formData, id: editingId } : p));
             setEditingId(null);
         } else {
-            updated = [...profiles, { ...formData, id: `SMB-${Math.floor(100 + Math.random() * 900)}` }];
+            const newId = `SMB-${Math.floor(100 + Math.random() * 900)}`;
+            updated = [...profiles, { ...formData, id: newId }];
         }
         setProfiles(updated);
         localStorage.setItem("profiles", JSON.stringify(updated));
+        // Reset Form
         setFormData({ id: "", title: "", age: "", status: "Single", gender: "Male", city: "", image: "" });
+        alert("Profile Successfully Save Ho Gai!");
     };
 
     const deleteProfile = (id: string) => {
-        if (!confirm("Delete this profile?")) return;
+        if (!confirm("Kya aap waqai ye profile delete karna chahte hain?")) return;
         const filtered = profiles.filter((p) => p.id !== id);
         setProfiles(filtered);
         localStorage.setItem("profiles", JSON.stringify(filtered));
     };
 
-    /* ================= LOGIN SCREEN ================= */
+    const deleteInquiry = (index: number) => {
+        const updated = inquiries.filter((_, i) => i !== index);
+        setInquiries(updated);
+        localStorage.setItem("inquiries", JSON.stringify(updated));
+    };
+
     if (!isLoggedIn) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#4a1111]">
                 <motion.form
                     onSubmit={handleLogin}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                     className="bg-white p-10 rounded-3xl w-full max-w-md shadow-2xl"
                 >
-                    <h2 className="text-3xl font-black text-center text-[#4a1111] mb-6">
-                        Admin Portal
-                    </h2>
-                    <input
-                        type="email"
-                        placeholder="Email"
-                        className="w-full p-4 rounded-2xl bg-gray-50 mb-4"
-                        onChange={(e) => setLoginCreds({ ...loginCreds, email: e.target.value })}
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        className="w-full p-4 rounded-2xl bg-gray-50 mb-6"
-                        onChange={(e) => setLoginCreds({ ...loginCreds, password: e.target.value })}
-                    />
-                    <button className="w-full py-4 bg-[#4a1111] text-white rounded-2xl font-black hover:bg-[#c19206]">
-                        Login
-                    </button>
+                    <h2 className="text-3xl font-black text-center text-[#4a1111] mb-6">Admin Portal</h2>
+                    <input type="email" placeholder="Email" className="w-full p-4 rounded-2xl bg-gray-50 mb-4 border"
+                        onChange={(e) => setLoginCreds({ ...loginCreds, email: e.target.value })} />
+                    <input type="password" placeholder="Password" className="w-full p-4 rounded-2xl bg-gray-50 mb-6 border"
+                        onChange={(e) => setLoginCreds({ ...loginCreds, password: e.target.value })} />
+                    <button className="w-full py-4 bg-[#4a1111] text-white rounded-2xl font-black hover:bg-[#c19206] transition-all">Login</button>
                 </motion.form>
             </div>
         );
     }
 
-    /* ================= DASHBOARD ================= */
     return (
         <div className="min-h-screen flex bg-gray-100">
             {/* SIDEBAR */}
             <aside className="w-72 bg-[#4a1111] text-white p-8 hidden lg:flex flex-col">
-                <h1 className="text-2xl font-black mb-10">
-                    Match<span className="text-[#c19206]">CRM</span>
-                </h1>
-                <button
-                    onClick={() => setActiveTab("profiles")}
-                    className={`p-4 rounded-2xl mb-3 font-bold ${activeTab === "profiles" ? "bg-[#c19206]" : "hover:bg-white/10"
-                        }`}
-                >
-                    Profiles
-                </button>
-                <button
-                    onClick={() => setActiveTab("inquiries")}
-                    className={`p-4 rounded-2xl font-bold ${activeTab === "inquiries" ? "bg-[#c19206]" : "hover:bg-white/10"
-                        }`}
-                >
-                    Inquiries ({inquiries.length})
-                </button>
+                <h1 className="text-2xl font-black mb-10">Match<span className="text-[#c19206]">CRM</span></h1>
+                <nav className="space-y-2">
+                    <button onClick={() => setActiveTab("profiles")}
+                        className={`w-full text-left p-4 rounded-2xl font-bold transition ${activeTab === "profiles" ? "bg-[#c19206]" : "hover:bg-white/10"}`}>
+                        Manage Profiles
+                    </button>
+                    <button onClick={() => setActiveTab("inquiries")}
+                        className={`w-full text-left p-4 rounded-2xl font-bold transition ${activeTab === "inquiries" ? "bg-[#c19206]" : "hover:bg-white/10"}`}>
+                        User Inquiries ({inquiries.length})
+                    </button>
+                </nav>
             </aside>
 
-            {/* MAIN */}
-            <main className="flex-1 p-10">
-                {/* TOP HEADER */}
-                <div className="flex justify-between items-center mb-10 bg-white p-6 rounded-3xl shadow">
+            {/* MAIN CONTENT */}
+            <main className="flex-1 p-10 overflow-y-auto">
+                <header className="flex justify-between items-center mb-10 bg-white p-6 rounded-3xl shadow-sm">
                     <div>
-                        <h2 className="text-3xl font-black text-[#4a1111]">Admin Dashboard</h2>
-                        <p className="text-gray-400 text-sm">Manage system data</p>
+                        <h2 className="text-3xl font-black text-[#4a1111]">Control Panel</h2>
+                        <p className="text-gray-400">Welcome back, {adminUser.name}</p>
                     </div>
+                    <button onClick={handleLogout} className="px-6 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-600 hover:text-white transition">Logout</button>
+                </header>
 
-                    <div className="flex items-center gap-4">
-                        <div className="text-right">
-                            <p className="font-black">{adminUser.name}</p>
-                            <p className="text-xs text-gray-400 uppercase">{adminUser.role}</p>
-                        </div>
-                        <div className="relative">
-                            <img
-                                src={adminUser.avatar}
-                                className="w-12 h-12 rounded-2xl border-2 border-[#c19206]"
-                            />
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleAdminImageChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer rounded-2xl"
-                            />
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            className="px-4 py-2 rounded-xl bg-red-500/10 text-red-600 font-bold hover:bg-red-500 hover:text-white"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                </div>
-
-                {/* CONTENT */}
                 <AnimatePresence mode="wait">
                     {activeTab === "profiles" ? (
                         <motion.div key="profiles" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                            <h3 className="text-2xl font-black mb-6">Profiles ({profiles.length})</h3>
+                            {/* CREATE PROFILE FORM */}
+                            <section className="bg-white p-8 rounded-3xl shadow-md mb-10">
+                                <h3 className="text-xl font-black mb-6 text-[#4a1111]">{editingId ? "Edit Profile" : "Create New Profile"}</h3>
+                                <form onSubmit={saveProfile} className="grid md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-600">Job/Title</label>
+                                        <input type="text" value={formData.title} required className="w-full p-3 rounded-xl bg-gray-50 border" placeholder="e.g. Software Engineer"
+                                            onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-600">Age</label>
+                                        <input type="number" value={formData.age} required className="w-full p-3 rounded-xl bg-gray-50 border" placeholder="e.g. 28"
+                                            onChange={(e) => setFormData({ ...formData, age: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-600">City</label>
+                                        <input type="text" value={formData.city} required className="w-full p-3 rounded-xl bg-gray-50 border" placeholder="e.g. Lahore"
+                                            onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-600">Gender</label>
+                                        <select value={formData.gender} className="w-full p-3 rounded-xl bg-gray-50 border"
+                                            onChange={(e) => setFormData({ ...formData, gender: e.target.value })}>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-600">Profile Image</label>
+                                        <input type="file" accept="image/*" className="w-full p-2 text-xs" onChange={handleProfileImageChange} />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <button className="w-full p-3 bg-[#c19206] text-white font-black rounded-xl hover:bg-[#4a1111] transition">
+                                            {editingId ? "Update Now" : "Publish Profile"}
+                                        </button>
+                                    </div>
+                                </form>
+                            </section>
+
+                            {/* LIST OF PROFILES */}
+                            <h3 className="text-2xl font-black mb-6">Active Website Profiles</h3>
                             <div className="grid md:grid-cols-2 gap-6">
                                 {profiles.map((p) => (
-                                    <div key={p.id} className="bg-white p-6 rounded-3xl shadow">
-                                        <div className="flex gap-4 items-center">
-                                            <img src={p.image} className="w-20 h-20 rounded-2xl object-cover" />
+                                    <div key={p.id} className="bg-white p-5 rounded-3xl shadow-sm border flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <img src={p.image || "/placeholder.jpg"} className="w-16 h-16 rounded-2xl object-cover border-2 border-[#c19206]" />
                                             <div>
-                                                <h4 className="font-black">{p.title}</h4>
-                                                <p className="text-sm text-gray-400">{p.city} • {p.age}</p>
+                                                <h4 className="font-black text-[#4a1111]">{p.title}</h4>
+                                                <p className="text-xs text-gray-400">{p.city} • {p.age} yrs • {p.gender}</p>
                                             </div>
                                         </div>
-                                        <div className="flex gap-4 mt-4 text-sm font-bold">
-                                            <button
-                                                onClick={() => {
-                                                    setEditingId(p.id);
-                                                    setFormData(p);
-                                                }}
-                                                className="text-blue-500"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button onClick={() => deleteProfile(p.id)} className="text-red-500">
-                                                Delete
-                                            </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { setEditingId(p.id); setFormData(p); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg font-bold">Edit</button>
+                                            <button onClick={() => deleteProfile(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg font-bold">Delete</button>
                                         </div>
                                     </div>
                                 ))}
@@ -253,8 +226,26 @@ export default function AdminDashboard() {
                         </motion.div>
                     ) : (
                         <motion.div key="inquiries" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                            <h3 className="text-2xl font-black mb-6">Inquiries</h3>
-                            {inquiries.length === 0 && <p className="text-gray-400 italic">No inquiries yet</p>}
+                            <h3 className="text-2xl font-black mb-6">User Inquiry Requests</h3>
+                            <div className="space-y-4">
+                                {inquiries.length === 0 ? (
+                                    <p className="text-gray-400 italic bg-white p-10 rounded-3xl text-center">Abhi tak koi inquiry nahi aai.</p>
+                                ) : (
+                                    inquiries.map((inq, idx) => (
+                                        <div key={idx} className="bg-white p-6 rounded-3xl shadow-sm border-l-8 border-[#c19206]">
+                                            <div className="flex justify-between items-start">
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                                                    <div><p className="text-[10px] uppercase font-bold text-gray-400">Profile ID</p><p className="font-bold">{inq.profileId}</p></div>
+                                                    <div><p className="text-[10px] uppercase font-bold text-gray-400">Profession</p><p className="font-bold">{inq.profession}</p></div>
+                                                    <div><p className="text-[10px] uppercase font-bold text-gray-400">Caste</p><p className="font-bold">{inq.caste}</p></div>
+                                                    <div><p className="text-[10px] uppercase font-bold text-gray-400">City/Country</p><p className="font-bold">{inq.city}, {inq.country}</p></div>
+                                                </div>
+                                                <button onClick={() => deleteInquiry(idx)} className="text-red-500 text-sm font-bold">Remove</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
