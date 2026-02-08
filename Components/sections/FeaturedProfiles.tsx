@@ -4,7 +4,7 @@ import ProfileCard from '../ui/ProfileCard';
 
 // Ye dummy data tab kaam ayega jab Admin ne koi profile add na ki ho
 const defaultProfiles = [
-    { id: 'SMB-917', title: 'Private Employee', age: 28, status: 'Single', gender: 'Male', city: 'Lahore', image: '/m1.jpg' },
+    { id: 'SMB-917', title: 'Software Engineer', age: 28, status: 'Single', gender: 'Male', city: 'Lahore', image: '/m1.jpg' },
     { id: 'SMB-825', title: 'Lawyer', age: 28, status: 'Single', gender: 'Female', city: 'Lahore', image: '/f1.jpg' },
     { id: 'SMB-877', title: 'Nurse', age: 32, status: 'Single', gender: 'Female', city: 'Sialkot', image: '/f2.jpg' },
     { id: 'SMB-59', title: 'Govt Employee', age: 28, status: 'Single', gender: 'Male', city: 'Faisalabad', image: '/m2.jpg' },
