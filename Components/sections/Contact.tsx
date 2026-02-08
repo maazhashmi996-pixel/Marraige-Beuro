@@ -11,7 +11,7 @@ export default function Contact() {
                     {[
                         { icon: <Phone size={32} />, label: "Phone Number", val: "+92 327 7770361" },
                         { icon: <Mail size={32} />, label: "Email Us", val: "Info@sehrishmarriage.com" },
-                        { icon: <MapPin size={32} />, label: "Address", val: "2, H Block Sector 2 DHA Rahbar Lahore" }
+                        { icon: <MapPin size={32} />, label: "Address", val: "2, Midland Plaza Defence Near Cavalary Ground" }
                     ].map((item, i) => (
                         <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-xl hover:shadow-2xl transition group border border-gray-100">
                             <div className="w-16 h-16 border-2 border-[#c19206] border-dashed rounded-full flex items-center justify-center mx-auto mb-6 text-[#c19206] group-hover:bg-[#c19206] group-hover:text-white transition-colors">
