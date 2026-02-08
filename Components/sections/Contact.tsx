@@ -17,7 +17,7 @@ export default function Contact() {
                             <div className="w-16 h-16 border-2 border-[#c19206] border-dashed rounded-full flex items-center justify-center mx-auto mb-6 text-[#c19206] group-hover:bg-[#c19206] group-hover:text-white transition-colors">
                                 {item.icon}
                             </div>
-                            <h4 className="text-xl font-bold text-gray-800">{item.label}</h4>
+                            <h4 className="text-xl font-bold text-gray-700">{item.label}</h4>
                             <p className="text-gray-500 mt-2">{item.val}</p>
                         </div>
                     ))}
