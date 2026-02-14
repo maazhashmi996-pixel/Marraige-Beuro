@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Redirection ke liye import
 import ProfileCard from '../ui/ProfileCard';
 
 // Ye dummy data tab kaam ayega jab Admin ne koi profile add na ki ho
@@ -12,23 +13,57 @@ const defaultProfiles = [
 
 export default function FeaturedProfiles() {
     const [profiles, setProfiles] = useState<any[]>([]);
+    const [isAuthorized, setIsAuthorized] = useState(false); // Auth state
+    const router = useRouter();
 
     useEffect(() => {
-        // 1. Admin Dashboard se save kiya hua data uthao
-        const savedData = localStorage.getItem("profiles");
+        // 1. Pehle check karo ke user logged in hai ya nahi
+        const authStatus = localStorage.getItem("isAdminLoggedIn");
 
-        if (savedData) {
-            const parsedData = JSON.parse(savedData);
-            // Agar Admin ne profiles banayi hain toh wo dikhao, warna dummy dikhao
-            setProfiles(parsedData.length > 0 ? parsedData : defaultProfiles);
+        if (authStatus !== "true") {
+            // Agar login nahi hai toh login page pe bhej do
+            router.push("/login");
         } else {
-            setProfiles(defaultProfiles);
+            // Agar login hai toh authorization true karo aur data load karo
+            setIsAuthorized(true);
+
+            // 2. Admin Dashboard se save kiya hua data uthao (Aapka original logic)
+            const savedData = localStorage.getItem("profiles");
+
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                setProfiles(parsedData.length > 0 ? parsedData : defaultProfiles);
+            } else {
+                setProfiles(defaultProfiles);
+            }
         }
-    }, []);
+    }, [router]);
+
+    // Logout function
+    const handleLogout = () => {
+        localStorage.removeItem("isAdminLoggedIn");
+        router.push("/login");
+    };
+
+    // Jab tak authentication check ho raha hai, tab tak screen khali rakho
+    if (!isAuthorized) {
+        return null;
+    }
 
     return (
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-gray-50 min-h-screen">
             <div className="max-w-7xl mx-auto px-6">
+
+                {/* Logout Button (Optional) */}
+                <div className="flex justify-end mb-4">
+                    <button
+                        onClick={handleLogout}
+                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                    >
+                        Logout
+                    </button>
+                </div>
+
                 <div className="text-center mb-16">
                     <h2 className="text-4xl font-black text-[#4a1111]">Featured Profiles</h2>
                     <div className="w-20 h-1.5 bg-[#c19206] mx-auto mt-4"></div>
