@@ -13,7 +13,7 @@ export default function Footer() {
                 {/* Column 1: Brand Identity */}
                 <div className="space-y-6">
                     <Link href="/" className="flex flex-col">
-                        <span className="text-2xl font-black tracking-tight">SEHRISH KANWAL</span>
+                        <span className="text-2xl font-black tracking-tight">Aasan Rishta</span>
                         <span className="text-[10px] tracking-[0.3em] text-[#c19206] font-bold uppercase">Marriage Bureau</span>
                     </Link>
                     <p className="text-gray-300 text-sm leading-relaxed">
@@ -75,7 +75,7 @@ export default function Footer() {
 
             {/* Bottom Bar */}
             <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
-                <p>© {currentYear} Sehrish Kanwal Marriage Bureau. All rights reserved.</p>
+                <p>© {currentYear} Aasan Rishta Marriage Bureau. All rights reserved.</p>
                 <div className="flex gap-6">
                     <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
                     <Link href="/terms" className="hover:text-white">Terms of Service</Link>
