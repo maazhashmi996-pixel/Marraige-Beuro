@@ -1,4 +1,4 @@
-import Packages from '@/Components/sections/Packages';
+import Packages from "@/Components/sections/Packages";
 
 export default function PackagesPage() {
     return (
