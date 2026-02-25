@@ -1,25 +1,29 @@
 "use client";
 import { motion } from 'framer-motion';
 import { Check, Star, Crown, Gem } from 'lucide-react';
+import { useRouter } from 'next/navigation'; // Navigation ke liye
 
 const plans = [
     {
         name: "Basic Plan",
-        price: "FREE",
+        price: "1000", // "FREE" ko 1000 kar diya logic ke liye, aap change kar sakte hain
+        displayPrice: "Rs. 1,000",
         icon: <Star className="text-gray-400" />,
         features: ["3 Profile Matches", "Standard Support", "Profile Visibility", "1 Month Validity"],
         recommended: false
     },
     {
         name: "Gold Plan",
-        price: "Rs. 5,000",
+        price: "5000",
+        displayPrice: "Rs. 5,000",
         icon: <Crown className="text-[#c19206]" />,
         features: ["10 Profile Matches", "Direct Contact Access", "Priority Support", "3 Months Validity", "Verified Badge"],
         recommended: true
     },
     {
         name: "Diamond Plan",
-        price: "Rs. 15,000",
+        price: "15000",
+        displayPrice: "Rs. 15,000",
         icon: <Gem className="text-[#c19206]" />,
         features: ["Unlimited Matches", "Personal Matchmaker", "Background Verification", "Lifetime Access", "Featured Profile Listing"],
         recommended: false
@@ -27,6 +31,14 @@ const plans = [
 ];
 
 export default function Packages() {
+    const router = useRouter();
+
+    // Button click handle karne ka function
+    const handlePlanSelect = (planName: string, planPrice: string) => {
+        // Register page par bhej raha hai with parameters
+        router.push(`/register?package=${encodeURIComponent(planName)}&price=${planPrice}`);
+    };
+
     return (
         <section className="py-24 bg-white relative overflow-hidden">
             <div className="max-w-7xl mx-auto px-6">
@@ -46,8 +58,8 @@ export default function Packages() {
                             key={i}
                             whileHover={{ y: -15 }}
                             className={`relative p-8 rounded-[3rem] border-2 transition-all duration-300 ${plan.recommended
-                                    ? 'border-[#c19206] shadow-2xl shadow-gold/20 bg-white scale-105 z-10'
-                                    : 'border-gray-100 hover:border-[#4a1111] bg-gray-50'
+                                ? 'border-[#c19206] shadow-2xl shadow-gold/20 bg-white scale-105 z-10'
+                                : 'border-gray-100 hover:border-[#4a1111] bg-gray-50'
                                 }`}
                         >
                             {plan.recommended && (
@@ -60,7 +72,7 @@ export default function Packages() {
                                 <div className="p-4 bg-white rounded-2xl shadow-sm">{plan.icon}</div>
                                 <div className="text-right">
                                     <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
-                                    <p className="text-2xl font-black text-[#4a1111]">{plan.price}</p>
+                                    <p className="text-2xl font-black text-[#4a1111]">{plan.displayPrice}</p>
                                 </div>
                             </div>
 
@@ -73,10 +85,13 @@ export default function Packages() {
                                 ))}
                             </ul>
 
-                            <button className={`w-full py-4 rounded-2xl font-bold transition-all ${plan.recommended
+                            <button
+                                onClick={() => handlePlanSelect(plan.name, plan.price)}
+                                className={`w-full py-4 rounded-2xl font-bold transition-all ${plan.recommended
                                     ? 'bg-[#c19206] text-white hover:bg-black shadow-lg shadow-gold/30'
                                     : 'bg-[#4a1111] text-white hover:bg-[#c19206]'
-                                }`}>
+                                    }`}
+                            >
                                 Choose {plan.name.split(' ')[0]}
                             </button>
                         </motion.div>

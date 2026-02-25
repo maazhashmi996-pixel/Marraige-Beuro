@@ -1,93 +1,90 @@
 "use client";
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, Heart } from 'lucide-react';
+import React from 'react';
+import { MapPin, Briefcase, User, Calendar } from 'lucide-react';
+import Link from 'next/link'; // Navigation ke liye zaroori hai
 
-// Profile ki dummy data type
-interface ProfileData {
-    id: string;
-    title: string;
-    age: number;
-    status: string;
-    gender: string;
-    city: string;
-    image: string;
+interface ProfileCardProps {
+    profile: {
+        id: string; // ID lazmi hai click ke liye
+        mainImage?: string;
+        image?: string;
+        title: string;
+        city: string;
+        age: number | string;
+        gender: string;
+        status?: string;
+    };
 }
 
-export default function ProfileCard({ profile }: { profile: ProfileData }) {
-    const [isOpen, setIsOpen] = useState(false);
+const ProfileCard = ({ profile }: ProfileCardProps) => {
+    // Image path handle karne ke liye
+    const imageUrl = profile.image || profile.mainImage || '/placeholder.jpg';
 
     return (
-        <>
-            <motion.div
-                whileHover={{ y: -10 }}
-                className="bg-white rounded-[2rem] shadow-lg overflow-hidden border border-gray-100 group"
-            >
-                {/* Profile Image */}
-                <div className="relative h-72 overflow-hidden">
+        /* Link tag pure card ko clickable bana deta hai */
+        <Link href={`/Profiles/${profile.id}`} className="block">
+            <div className="overflow-hidden rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group cursor-pointer">
+                {/* Image Container */}
+                <div className="relative h-72 w-full overflow-hidden">
                     <img
-                        src={profile.image}
-                        alt={profile.id}
-                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                        src={imageUrl}
+                        alt={profile.title}
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500&auto=format&fit=crop';
+                        }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                </div>
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
-                {/* Profile Info */}
-                <div className="p-6 text-center space-y-2">
-                    <h3 className="text-[#4a1111] font-bold text-xl tracking-wider">{profile.id}</h3>
-                    <p className="font-semibold text-gray-700">{profile.title}</p>
-                    <p className="text-sm text-gray-500">
-                        {profile.age} | {profile.status} | {profile.gender}
-                    </p>
-                    <p className="text-sm text-gray-500">{profile.city} | Pakistan</p>
-
-                    <div className="pt-4 flex items-center justify-between border-t mt-4">
-                        <button className="text-pink-500 flex items-center gap-1 text-sm font-bold">
-                            <Heart size={18} /> 42
-                        </button>
-                        <button
-                            onClick={() => setIsOpen(true)}
-                            className="text-[#c19206] flex items-center gap-1 text-sm font-bold hover:underline"
-                        >
-                            <Eye size={18} /> View Profile
-                        </button>
+                    {/* Gender Badge */}
+                    <div className="absolute top-4 left-4 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/30 text-white text-[10px] font-bold uppercase tracking-wider">
+                        {profile.gender}
                     </div>
                 </div>
-            </motion.div>
 
-            {/* Popup Form (Inquiry Modal) */}
-            <AnimatePresence>
-                {isOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setIsOpen(false)}
-                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }}
-                            className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl relative z-10"
-                        >
-                            <h2 className="text-2xl font-black text-[#4a1111] text-center mb-2">Unlock Profile</h2>
-                            <p className="text-center text-gray-500 text-sm mb-8">Enter details to see full info of {profile.id}</p>
-
-                            <form className="space-y-4">
-                                <input type="text" placeholder="Your Name" className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#c19206]" />
-                                <input type="text" placeholder="Phone / WhatsApp" className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#c19206]" />
-                                <input type="text" placeholder="Your City" className="w-full p-4 bg-gray-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#c19206]" />
-
-                                <button
-                                    type="button"
-                                    className="w-full py-4 bg-[#4a1111] text-white rounded-2xl font-bold shadow-lg hover:bg-[#c19206] transition-all"
-                                >
-                                    Request Full Access
-                                </button>
-                            </form>
-                        </motion.div>
+                {/* Content Section */}
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight">
+                            {profile.title}
+                        </h3>
+                        <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded-lg text-xs font-bold">
+                            <Calendar size={12} /> {profile.age} yrs
+                        </span>
                     </div>
-                )}
-            </AnimatePresence>
-        </>
+
+                    <div className="space-y-2">
+                        {/* City */}
+                        <div className="flex items-center gap-2 text-slate-500">
+                            <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center">
+                                <MapPin size={14} className="text-slate-400" />
+                            </div>
+                            <span className="text-sm font-medium">{profile.city}</span>
+                        </div>
+
+                        {/* Status/Career */}
+                        <div className="flex items-center gap-2 text-slate-500">
+                            <div className="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center">
+                                <Briefcase size={14} className="text-slate-400" />
+                            </div>
+                            <span className="text-sm font-medium">{profile.status || "Verified Member"}</span>
+                        </div>
+                    </div>
+
+                    {/* View Details Hint */}
+                    <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between group/btn">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            Click to Unlock
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover/btn:bg-blue-600 transition-colors">
+                            <User size={14} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Link>
     );
-}
+};
+
+export default ProfileCard;

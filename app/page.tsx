@@ -10,7 +10,6 @@ export default function Home() {
     <div>
       <HeroSlider />
       <About />
-      <FeaturedProfiles />
       <Contact />
     </div>
   );
