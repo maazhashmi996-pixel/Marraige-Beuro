@@ -1,10 +1,10 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FiLock, FiMail, FiAlertCircle } from "react-icons/fi";
+import { FiLock, FiMail, FiAlertCircle, FiUserPlus } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-// Environment variable for API Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function LoginPage() {
@@ -13,43 +13,56 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [mounted, setMounted] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
-    // Callback to handle role-based redirection
+    // --- Role-based redirection logic ---
     const redirectUser = useCallback((role: string) => {
-        if (role === 'admin') {
-            router.replace("/admin");
-        } else {
-            router.replace("/matches");
-        }
+        setIsRedirecting(true); // Stop rendering form to prevent flicker
+        const path = role === 'admin' ? "/admin" : "/matches";
+
+        // Use replace instead of push to prevent back-button loops
+        router.replace(path);
     }, [router]);
 
-    // Check if user is already logged in on component mount
+    // --- 1. Initial Mount Check ---
     useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // --- 2. Session Check (Run only once on mount to prevent loops) ---
+    useEffect(() => {
+        if (!mounted) return;
+
         const token = localStorage.getItem("userToken");
         const userData = localStorage.getItem("userData");
         const loginTime = localStorage.getItem("loginTimestamp");
 
-        // 30 Min check even on mount
-        if (loginTime) {
-            const isExpired = Date.now() - parseInt(loginTime) > 30 * 60 * 1000;
-            if (isExpired) {
-                localStorage.clear();
-                return;
-            }
-        }
-
         if (token && userData) {
+            // Expiry Check (30 mins)
+            if (loginTime) {
+                const isExpired = Date.now() - parseInt(loginTime) > 30 * 60 * 1000;
+                if (isExpired) {
+                    console.warn("Session expired on login check.");
+                    localStorage.clear();
+                    return;
+                }
+            }
+
             try {
                 const user = JSON.parse(userData);
-                if (user && user.role) {
+                if (user?.role) {
+                    // Agar pehle se login hai, toh seedha andar bhejo
                     redirectUser(user.role);
                 }
             } catch (e) {
+                console.error("Auth parsing error");
                 localStorage.clear();
             }
         }
-    }, [redirectUser]);
+    }, [mounted, redirectUser]);
 
+    // --- 3. Login Submission ---
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -62,52 +75,53 @@ export default function LoginPage() {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    password
+                })
             });
-
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("Server error: Backend is not sending JSON.");
-            }
 
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // --- 1. Save Core Auth Token ---
+                // 🔥 CRITICAL: Store everything consistently
                 localStorage.setItem("userToken", data.token);
-
-                // --- 2. Save Timestamp for 30-min Auto-Logout ---
                 localStorage.setItem("loginTimestamp", Date.now().toString());
 
-                // --- 3. Save Gender for Filtering Logic ---
-                // Backend se agar gender aa raha hai to save karein, warna default 'female' (agar male user hai)
-                const gender = data.user?.gender || "male";
-                localStorage.setItem("userGender", gender.toLowerCase());
-
-                // --- 4. Sanitize and Save User Data ---
                 const finalUserData = {
                     id: data.user?.id || data.user?._id,
                     name: data.user?.name || "User",
                     role: data.user?.role || "user",
-                    gender: gender.toLowerCase(),
-                    credits: data.user?.credits ?? data.user?.viewLimit ?? 0,
+                    gender: (data.user?.gender || "male").toLowerCase(),
+                    credits: data.user?.credits ?? 0,
                     package: data.user?.package || "Basic"
                 };
 
                 localStorage.setItem("userData", JSON.stringify(finalUserData));
+                localStorage.setItem("userGender", finalUserData.gender);
 
-                // Redirection
+                // Success redirect
                 redirectUser(finalUserData.role);
             } else {
                 setError(data.message || "Invalid credentials. Please try again.");
+                setLoading(false);
             }
         } catch (err: any) {
-            console.error("Login Error:", err);
-            setError(err.message || "Server connection failed.");
-        } finally {
+            setError("Server connection failed. Is your backend running?");
             setLoading(false);
         }
     };
+
+    // --- Loop Guard: Don't render anything while checking or redirecting ---
+    if (!mounted || isRedirecting) {
+        return (
+            <div className="min-h-screen bg-[#4a1111] flex items-center justify-center">
+                <div className="animate-pulse text-[#c19206] font-black text-2xl tracking-tighter">
+                    MATCHCRM...
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#4a1111] flex items-center justify-center p-6 font-sans">
@@ -140,8 +154,8 @@ export default function LoginPage() {
                     </motion.div>
                 )}
 
+                {/* Form */}
                 <form onSubmit={handleLogin} className="space-y-5">
-                    {/* Email Field */}
                     <div className="relative text-left">
                         <label className="ml-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
                         <div className="relative mt-1">
@@ -157,7 +171,6 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Password Field */}
                     <div className="relative text-left">
                         <label className="ml-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</label>
                         <div className="relative mt-1">
@@ -173,17 +186,29 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Submit Button */}
                     <button
+                        type="submit"
                         disabled={loading}
-                        className={`w-full py-5 bg-[#c19206] text-white rounded-2xl font-black text-lg shadow-xl transition-all flex items-center justify-center gap-2 ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-[#4a1111] hover:shadow-2xl active:scale-95"
-                            }`}
+                        className={`w-full py-5 bg-[#c19206] text-white rounded-2xl font-black text-lg shadow-xl transition-all flex items-center justify-center gap-2 ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-[#4a1111] hover:shadow-2xl active:scale-95"}`}
                     >
                         {loading ? "AUTHENTICATING..." : "ENTER SYSTEM"}
                     </button>
                 </form>
 
-                {/* Footer Disclaimer */}
+                {/* Admin Setup Link */}
+                <div className="mt-8 pt-6 border-t border-gray-100">
+                    <p className="text-gray-500 text-sm mb-4">Need to initialize the system?</p>
+                    <Link href="/register_admin">
+                        <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="w-full py-4 border-2 border-[#c19206] text-[#c19206] rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#c19206] hover:text-white transition-all cursor-pointer"
+                        >
+                            <FiUserPlus /> SETUP ADMIN ACCOUNT
+                        </motion.div>
+                    </Link>
+                </div>
+
                 <p className="mt-8 text-gray-400 text-[11px] font-medium uppercase tracking-widest">
                     Secured by MatchCRM Encryption
                 </p>

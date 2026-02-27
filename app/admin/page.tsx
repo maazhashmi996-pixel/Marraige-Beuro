@@ -40,6 +40,8 @@ interface UserProfile {
 
 interface RegistrationRequest {
     _id: string;
+    email: "",         // <-- Naya add kiya gaya
+    phone: "",
     name: string;
     fatherName: string;
     email: string;
@@ -80,13 +82,13 @@ export default function AdminDashboardPage() {
 
     const API_URL = "http://localhost:5000/api";
 
-    // ✅ AUTH CHECK LOGIC
+    // ✅ AUTH CHECK LOGIC - Optimized to prevent loops
     useEffect(() => {
-        const token = localStorage.getItem("token"); // Backend se aya hua token
-        const userData = localStorage.getItem("user");
+        const token = localStorage.getItem("userToken");
+        const userData = localStorage.getItem("userData");
 
         if (!token || !userData) {
-            router.push("/login");
+            router.replace("/login");
             return;
         }
 
@@ -94,17 +96,17 @@ export default function AdminDashboardPage() {
             const user = JSON.parse(userData);
             if (user.role !== "admin") {
                 alert("Access Denied: You are not an Admin!");
-                router.push("/"); // Non-admin ko home page pe bhej dein
+                router.replace("/");
             } else {
                 setIsAuthorized(true);
             }
         } catch (e) {
-            router.push("/login");
+            router.replace("/login");
         }
     }, [router]);
 
     const fetchDashboardData = useCallback(async () => {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("userToken");
         if (!token) return;
 
         setLoading(true);
@@ -117,8 +119,10 @@ export default function AdminDashboardPage() {
             });
 
             if (profRes.ok && regRes.ok) {
-                setProfiles(await profRes.json() || []);
-                setRegistrations(await regRes.json() || []);
+                const profilesData = await profRes.json();
+                const regsData = await regRes.json();
+                setProfiles(profilesData || []);
+                setRegistrations(regsData || []);
             }
         } catch (err) {
             console.error("Fetch error:", err);
@@ -134,7 +138,7 @@ export default function AdminDashboardPage() {
     }, [fetchDashboardData, isAuthorized]);
 
     const handleAction = async (id: string, action: 'approve' | 'reject' | 'delete-reg') => {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("userToken");
         const confirmMsg = action === 'reject' ? "Reject and Delete this request?" : "Are you sure?";
         if (!confirm(confirmMsg)) return;
 
@@ -149,6 +153,14 @@ export default function AdminDashboardPage() {
                 fetchDashboardData();
             }
         } catch (err) { alert("Action failed"); }
+    };
+
+    const handleLogout = () => {
+        localStorage.removeItem("userToken");
+        localStorage.removeItem("userData");
+        localStorage.removeItem("userGender");
+        localStorage.removeItem("loginTimestamp");
+        router.replace("/login");
     };
 
     if (!isAuthorized) {
@@ -183,7 +195,7 @@ export default function AdminDashboardPage() {
                 </nav>
 
                 <div className="p-6">
-                    <button onClick={() => { localStorage.clear(); router.push("/login"); }}
+                    <button onClick={handleLogout}
                         className="w-full p-4 bg-red-500/20 text-red-400 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
                         <FiLogOut className="inline mr-2" /> Logout
                     </button>
@@ -228,11 +240,11 @@ export default function AdminDashboardPage() {
                                     <button onClick={() => setSelectedUser(null)} className="p-3 hover:bg-red-500 rounded-full transition-all"><FiX size={24} /></button>
                                 </div>
 
+
                                 <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                                             <h4 className="col-span-2 font-black text-[#4a1111] border-b pb-2 flex items-center gap-2"><FiUsers /> Member Details</h4>
-
                                             <DataField label="Father Name" value={selectedUser.fatherName} />
                                             <DataField label="Contact" value={selectedUser.phone} />
                                             <DataField label="Age / Gender" value={`${selectedUser.age || '---'} / ${selectedUser.gender || '---'}`} />
@@ -357,7 +369,7 @@ function ManageProfilesList({ profiles, API_URL, refresh, onEdit }: { profiles: 
         if (!confirm("Delete this profile forever?")) return;
         const res = await fetch(`${API_URL}/admin/profile/${id}`, {
             method: "DELETE",
-            headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+            headers: { "Authorization": `Bearer ${localStorage.getItem("userToken")}` }
         });
         if (res.ok) refresh();
     };
@@ -367,7 +379,7 @@ function ManageProfilesList({ profiles, API_URL, refresh, onEdit }: { profiles: 
             {profiles.map(p => (
                 <div key={p._id} className="bg-white p-4 rounded-3xl border flex items-center justify-between group shadow-sm">
                     <div className="flex items-center gap-4">
-                        <img src={p.mainImage} alt="main" className="w-16 h-16 rounded-2xl object-cover border" />
+                        <img src={p.mainImage || "https://via.placeholder.com/150"} alt="main" className="w-16 h-16 rounded-2xl object-cover border" />
                         <div>
                             <h4 className="font-black text-[#4a1111]">{p.name}</h4>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.city} | {p.caste}</p>
@@ -384,11 +396,11 @@ function ManageProfilesList({ profiles, API_URL, refresh, onEdit }: { profiles: 
 }
 
 function StatsGrid({ registrations, profiles }: { registrations: RegistrationRequest[], profiles: UserProfile[] }) {
-    const pending = registrations.filter(u => !u.isApproved).length;
+    const pendingCount = registrations.filter(u => !u.isApproved).length;
     const revenue = registrations.filter(u => u.isApproved).length * 1500;
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-            <StatCard label="Pending" value={pending} color="border-yellow-500" />
+            <StatCard label="Pending" value={pendingCount} color="border-yellow-500" />
             <StatCard label="Live Profiles" value={profiles.length} color="border-green-500" />
             <StatCard label="Total Revenue" value={`Rs. ${revenue}`} color="border-[#c19206]" />
             <StatCard label="Site Visitors" value="1.2k" color="border-blue-500" />
@@ -446,9 +458,24 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        // 1. FormData tayyar karein
         const data = new FormData();
-        Object.entries(formData).forEach(([k, v]) => data.append(k, String(v)));
-        selectedFiles.forEach(f => data.append("images", f));
+
+        // 2. Sirf wo data append karein jo khali nahi hai
+        Object.entries(formData).forEach(([k, v]) => {
+            if (v !== "" && v !== null && v !== undefined) {
+                data.append(k, String(v));
+            }
+        });
+
+        // 3. Images append karein
+        selectedFiles.forEach(f => {
+            data.append("images", f); // Backend par 'images' name hona chahiye
+        });
+
+        // Debugging ke liye (Optional)
+        console.log("Sending Data...");
 
         try {
             const endpoint = isEdit ? `/admin/profile/${initialData?._id}` : `/admin/create-profile`;
@@ -456,14 +483,27 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
 
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: method,
-                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` },
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("userToken")}`
+                    // Yaad rakhein: Content-Type yahan nahi likhna
+                },
                 body: data
             });
+
+            // 4. Response check karein
+            const result = await res.json();
 
             if (res.ok) {
                 alert(isEdit ? "Profile Updated Successfully!" : "Profile Published Successfully!");
                 if (!isEdit) {
+                    // Form reset logic
+                    const [formData, setFormData] = useState({
+                        name: initialData?.name || "",
+                        email: initialData?.email || "", // Initial state mein bhi zaroori hai
+                        // ... baki sab
+                    });
                     setFormData({
+
                         name: "", fatherName: "", title: "", age: "", gender: "Male",
                         caste: "", religion: "Islam", sect: "Sunni", city: "",
                         height: "", weight: "", maritalStatus: "Single",
@@ -475,8 +515,17 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                     setPreviews([]);
                 }
                 refresh();
+            } else {
+                // Agar 400 error aya hai to backend ka message dikhayein
+                alert(`Backend Error: ${result.message || "Something went wrong"}`);
+                console.error("Server Error Detail:", result);
             }
-        } catch (err) { alert("Error saving profile"); } finally { setLoading(false); }
+        } catch (err) {
+            console.error("Fetch Error:", err);
+            alert("Server connection failed. Please check if backend is running.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -493,8 +542,8 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                         <label className="text-xs font-bold text-gray-400 uppercase ml-2">Display Title & Name</label>
                         <input type="text" placeholder="Profile Title (e.g. Educated Sunni Girl - Doctor)" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
                         <div className="grid grid-cols-2 gap-4">
-                            <input type="text" placeholder="Full Name" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-                            <input type="text" placeholder="Father Name" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.fatherName} onChange={e => setFormData({ ...formData, fatherName: e.target.value })} />
+                            <input type="text" placeholder="Full Name" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
+                            <input type="text" placeholder="Father Name" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.fatherName} onChange={e => setFormData({ ...formData, fatherName: e.target.value })} />
                         </div>
                     </div>
 
@@ -508,7 +557,7 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                     </div>
                 </div>
 
-                <hr />
+                <hr className="border-gray-100" />
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
@@ -518,40 +567,43 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Gender</label>
                         <select className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                            <option>Male</option><option>Female</option>
+                            <option>Male</option>
+                            <option>Female</option>
                         </select>
                     </div>
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">City</label>
-                        <input type="text" placeholder="City" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} required />
+                        <input type="text" placeholder="City" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} required />
                     </div>
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Marital Status</label>
                         <select className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.maritalStatus} onChange={e => setFormData({ ...formData, maritalStatus: e.target.value })}>
-                            <option>Single</option><option>Divorced</option><option>Widowed</option><option>Separated</option>
+                            <option>Single</option>
+                            <option>Divorced</option>
+                            <option>Widowed</option>
+                            <option>Separated</option>
                         </select>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input type="text" placeholder="Education" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} />
-                    <input type="text" placeholder="Occupation" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.occupation} onChange={e => setFormData({ ...formData, occupation: e.target.value })} />
-                    <input type="text" placeholder="Monthly Income" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.monthlyIncome} onChange={e => setFormData({ ...formData, monthlyIncome: e.target.value })} />
+                    <input type="text" placeholder="Education" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} />
+                    <input type="text" placeholder="Occupation" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.occupation} onChange={e => setFormData({ ...formData, occupation: e.target.value })} />
+                    <input type="text" placeholder="Monthly Income" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.monthlyIncome} onChange={e => setFormData({ ...formData, monthlyIncome: e.target.value })} />
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <input type="text" placeholder="Caste" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.caste} onChange={e => setFormData({ ...formData, caste: e.target.value })} />
-                    <input type="text" placeholder="Sect" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.sect} onChange={e => setFormData({ ...formData, sect: e.target.value })} />
-                    <input type="text" placeholder="Height" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.height} onChange={e => setFormData({ ...formData, height: e.target.value })} />
-                    <input type="text" placeholder="Mother Tongue" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.motherTongue} onChange={e => setFormData({ ...formData, motherTongue: e.target.value })} />
+                    <input type="text" placeholder="Caste" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.caste} onChange={e => setFormData({ ...formData, caste: e.target.value })} />
+                    <input type="text" placeholder="Sect" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.sect} onChange={e => setFormData({ ...formData, sect: e.target.value })} />
+                    <input type="text" placeholder="Height" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.height} onChange={e => setFormData({ ...formData, height: e.target.value })} />
+                    <input type="text" placeholder="Mother Tongue" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.motherTongue} onChange={e => setFormData({ ...formData, motherTongue: e.target.value })} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <textarea placeholder="Partner Requirements" className="p-4 rounded-2xl bg-gray-50 border outline-none min-h-[100px]" value={formData.requirements} onChange={e => setFormData({ ...formData, requirements: e.target.value })} />
-                    <textarea placeholder="Brief About Family" className="p-4 rounded-2xl bg-gray-50 border outline-none min-h-[100px]" value={formData.familyDetails} onChange={e => setFormData({ ...formData, familyDetails: e.target.value })} />
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <textarea placeholder="Requirements / Brief About Family" className="p-4 rounded-2xl bg-gray-50 border outline-none min-h-[100px] font-bold" value={formData.requirements} onChange={e => setFormData({ ...formData, requirements: e.target.value })} />
                 </div>
 
-                <button type="submit" disabled={loading} className={`w-full py-5 rounded-2xl font-black text-lg transition-all ${loading ? 'bg-gray-200' : 'bg-[#c19206] text-white hover:bg-[#4a1111] shadow-xl hover:shadow-2xl'}`}>
+                <button type="submit" disabled={loading} className={`w-full py-5 rounded-2xl font-black text-lg transition-all ${loading ? 'bg-gray-200 text-gray-400' : 'bg-[#c19206] text-white hover:bg-[#4a1111] shadow-xl hover:shadow-2xl'}`}>
                     {loading ? "SYNCING DATA..." : isEdit ? "UPDATE PROFILE" : "PUBLISH LIVE PROFILE"}
                 </button>
             </form>
