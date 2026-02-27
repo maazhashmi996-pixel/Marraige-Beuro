@@ -4,6 +4,9 @@ import { motion } from "framer-motion";
 import { FiLock, FiMail, FiAlertCircle } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
+// Environment variable for API Base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
@@ -11,30 +14,37 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // --- LOGIC: Redirect Function ---
+    // Callback to handle role-based redirection
     const redirectUser = useCallback((role: string) => {
         if (role === 'admin') {
-            router.push("/admin");
+            router.replace("/admin");
         } else {
-            router.push("/matches");
+            router.replace("/matches");
         }
     }, [router]);
 
-    // --- LOGIC: Check session on mount (Prevents re-login) ---
+    // Check if user is already logged in on component mount
     useEffect(() => {
         const token = localStorage.getItem("userToken");
         const userData = localStorage.getItem("userData");
+        const loginTime = localStorage.getItem("loginTimestamp");
+
+        // 30 Min check even on mount
+        if (loginTime) {
+            const isExpired = Date.now() - parseInt(loginTime) > 30 * 60 * 1000;
+            if (isExpired) {
+                localStorage.clear();
+                return;
+            }
+        }
 
         if (token && userData) {
             try {
                 const user = JSON.parse(userData);
-                if (user.role === 'admin' && window.location.pathname !== "/admin") {
-                    redirectUser('admin');
-                } else if (user.role !== 'admin' && window.location.pathname !== "/matches") {
-                    redirectUser('user');
+                if (user && user.role) {
+                    redirectUser(user.role);
                 }
             } catch (e) {
-                console.error("Session Error:", e);
                 localStorage.clear();
             }
         }
@@ -46,53 +56,54 @@ export default function LoginPage() {
         setError("");
 
         try {
-            // --- UPDATED LOGIC: Smart Routing ---
-            // Pehle hum Admin route try karenge
-            let response = await fetch('http://localhost:5000/api/auth/admin-login', {
+            const response = await fetch(`${API_BASE_URL}/api/users/login`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({ email, password })
             });
 
-            let data = await response.json();
-
-            // Agar admin route ne mana kar diya (404 ya success false), to user route try karein
-            if (!response.ok || data.success === false) {
-                console.log("Switching to User Login route...");
-                response = await fetch('http://localhost:5000/api/users/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                data = await response.json();
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Server error: Backend is not sending JSON.");
             }
+
+            const data = await response.json();
 
             if (response.ok && data.success) {
-                // 1. Data Store Karein
+                // --- 1. Save Core Auth Token ---
                 localStorage.setItem("userToken", data.token);
 
-                // Role check: Agar backend se role nahi aa raha to email se guess karein
-                const userRole = data.user?.role || (email.toLowerCase().includes('admin') ? 'admin' : 'user');
-                const userData = data.user || { email, role: userRole };
+                // --- 2. Save Timestamp for 30-min Auto-Logout ---
+                localStorage.setItem("loginTimestamp", Date.now().toString());
 
-                localStorage.setItem("userData", JSON.stringify(userData));
+                // --- 3. Save Gender for Filtering Logic ---
+                // Backend se agar gender aa raha hai to save karein, warna default 'female' (agar male user hai)
+                const gender = data.user?.gender || "male";
+                localStorage.setItem("userGender", gender.toLowerCase());
 
-                // 2. Immediate Redirect
-                redirectUser(userRole);
+                // --- 4. Sanitize and Save User Data ---
+                const finalUserData = {
+                    id: data.user?.id || data.user?._id,
+                    name: data.user?.name || "User",
+                    role: data.user?.role || "user",
+                    gender: gender.toLowerCase(),
+                    credits: data.user?.credits ?? data.user?.viewLimit ?? 0,
+                    package: data.user?.package || "Basic"
+                };
 
-                // 3. Hard Redirect Backup
-                setTimeout(() => {
-                    if (window.location.pathname.includes("login")) {
-                        window.location.href = userRole === 'admin' ? "/admin" : "/matches";
-                    }
-                }, 800);
+                localStorage.setItem("userData", JSON.stringify(finalUserData));
 
+                // Redirection
+                redirectUser(finalUserData.role);
             } else {
-                setError(data.message || "Invalid email or password!");
+                setError(data.message || "Invalid credentials. Please try again.");
             }
-        } catch (err) {
-            setError("Server connection failed! Please ensure backend is running.");
+        } catch (err: any) {
             console.error("Login Error:", err);
+            setError(err.message || "Server connection failed.");
         } finally {
             setLoading(false);
         }
@@ -118,7 +129,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Error Message Display */}
+                {/* Error Message */}
                 {error && (
                     <motion.div
                         initial={{ opacity: 0, x: -10 }}
@@ -130,7 +141,7 @@ export default function LoginPage() {
                 )}
 
                 <form onSubmit={handleLogin} className="space-y-5">
-                    {/* Email Input */}
+                    {/* Email Field */}
                     <div className="relative text-left">
                         <label className="ml-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</label>
                         <div className="relative mt-1">
@@ -146,7 +157,7 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {/* Password Input */}
+                    {/* Password Field */}
                     <div className="relative text-left">
                         <label className="ml-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Password</label>
                         <div className="relative mt-1">
@@ -168,20 +179,11 @@ export default function LoginPage() {
                         className={`w-full py-5 bg-[#c19206] text-white rounded-2xl font-black text-lg shadow-xl transition-all flex items-center justify-center gap-2 ${loading ? "opacity-70 cursor-not-allowed" : "hover:bg-[#4a1111] hover:shadow-2xl active:scale-95"
                             }`}
                     >
-                        {loading ? (
-                            <span className="flex items-center gap-2">
-                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                AUTHENTICATING...
-                            </span>
-                        ) : (
-                            "ENTER SYSTEM"
-                        )}
+                        {loading ? "AUTHENTICATING..." : "ENTER SYSTEM"}
                     </button>
                 </form>
 
+                {/* Footer Disclaimer */}
                 <p className="mt-8 text-gray-400 text-[11px] font-medium uppercase tracking-widest">
                     Secured by MatchCRM Encryption
                 </p>

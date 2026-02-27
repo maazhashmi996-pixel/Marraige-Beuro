@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     FiUser, FiCheckCircle, FiArrowRight, FiArrowLeft,
-    FiCamera, FiCreditCard, FiPhone, FiMail, FiInfo, FiMapPin
+    FiCamera, FiCreditCard
 } from "react-icons/fi";
 
 // --- Types strictly matching backend requirements ---
@@ -20,7 +20,7 @@ interface FormData {
     age: string;
     gender: "Male" | "Female";
     maritalStatus: string;
-    monthlyIncome: string;
+    monthlyIncome: string; // Will be sent as 'income' to backend
     houseType: string;
     houseSize: string;
     disability: string;
@@ -80,7 +80,6 @@ function RegisterFormContent() {
     const [screenshot, setScreenshot] = useState<File | null>(null);
     const [ssPreview, setSsPreview] = useState<string | null>(null);
 
-    // Sync search params with state
     useEffect(() => {
         const pkg = searchParams.get("package");
         const prc = searchParams.get("price");
@@ -94,7 +93,7 @@ function RegisterFormContent() {
             const filesArray = Array.from(e.target.files).slice(0, 4);
             setImageFiles(filesArray);
 
-            // Clean up old previews to avoid memory leaks
+            // Clean up old previews to prevent memory leaks
             imagePreviews.forEach(url => URL.revokeObjectURL(url));
             const previews = filesArray.map(file => URL.createObjectURL(file));
             setImagePreviews(previews);
@@ -119,22 +118,27 @@ function RegisterFormContent() {
         try {
             const dataToSend = new FormData();
 
-            // Appending text fields
+            // Loop through all text fields
             (Object.entries(formData) as [keyof FormData, string][]).forEach(([key, value]) => {
-                dataToSend.append(key, value);
+                // Backend expects 'income' instead of 'monthlyIncome'
+                if (key === 'monthlyIncome') {
+                    dataToSend.append("income", value);
+                } else {
+                    dataToSend.append(key, value);
+                }
             });
 
-            // Appending profile images
+            // Appending profile images (Backend: upload.array('images', 4))
             imageFiles.forEach((file) => dataToSend.append("images", file));
 
-            // Appending payment screenshot
+            // Appending payment screenshot (Backend: upload.single('paymentScreenshot'))
             if (screenshot) {
                 dataToSend.append("paymentScreenshot", screenshot);
             }
 
             const response = await fetch("http://localhost:5000/api/users/register", {
                 method: "POST",
-                body: dataToSend,
+                body: dataToSend, // Browser sets Content-Type to multipart/form-data automatically
             });
 
             const result = await response.json();
@@ -146,7 +150,7 @@ function RegisterFormContent() {
             }
         } catch (error) {
             console.error("Submit Error:", error);
-            alert("Network error! Make sure your backend server is running on port 5000.");
+            alert("Network error! Make sure your backend server is running.");
         } finally {
             setLoading(false);
         }
@@ -195,7 +199,7 @@ function RegisterFormContent() {
 
                                 <input type="password" placeholder="Create Password" className="input-field-iconless" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required />
 
-                                <button onClick={handleNext} className="btn-primary mt-4" disabled={!formData.name || !formData.email}>
+                                <button onClick={handleNext} className="btn-primary mt-4" disabled={!formData.name || !formData.email || !formData.phone}>
                                     Next: Bio Details <FiArrowRight />
                                 </button>
                             </motion.div>
@@ -216,13 +220,13 @@ function RegisterFormContent() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" placeholder="Education (e.g. Masters)" className="input-field-iconless" value={formData.education} onChange={(e) => setFormData({ ...formData, education: e.target.value })} />
+                                    <input type="text" placeholder="Education" className="input-field-iconless" value={formData.education} onChange={(e) => setFormData({ ...formData, education: e.target.value })} />
                                     <input type="text" placeholder="Occupation" className="input-field-iconless" value={formData.occupation} onChange={(e) => setFormData({ ...formData, occupation: e.target.value })} />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" placeholder="Height (e.g 5'7)" className="input-field-iconless" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
-                                    <input type="text" placeholder="Weight (kg)" className="input-field-iconless" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })} />
+                                    <input type="text" placeholder="Monthly Income" className="input-field-iconless" value={formData.monthlyIncome} onChange={(e) => setFormData({ ...formData, monthlyIncome: e.target.value })} />
+                                    <input type="text" placeholder="City" className="input-field-iconless" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -236,27 +240,19 @@ function RegisterFormContent() {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <input type="text" placeholder="City" className="input-field-iconless" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
-                                    <input type="text" placeholder="Mother Tongue" className="input-field-iconless" value={formData.motherTongue} onChange={(e) => setFormData({ ...formData, motherTongue: e.target.value })} />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
                                     <select className="input-field-iconless" value={formData.maritalStatus} onChange={(e) => setFormData({ ...formData, maritalStatus: e.target.value })}>
                                         <option value="Single">Single</option>
                                         <option value="Divorced">Divorced</option>
                                         <option value="Widowed">Widowed</option>
                                     </select>
-                                    <select className="input-field-iconless" value={formData.houseType} onChange={(e) => setFormData({ ...formData, houseType: e.target.value })}>
-                                        <option value="Own">Own House</option>
-                                        <option value="Rental">Rental</option>
-                                    </select>
+                                    <input type="text" placeholder="Height (e.g 5'7)" className="input-field-iconless" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
                                 </div>
 
-                                <textarea placeholder="Family Details (Brothers/Sisters etc)" className="input-field-iconless min-h-[60px]" value={formData.familyDetails} onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })} />
+                                <textarea placeholder="Family Details" className="input-field-iconless min-h-[60px]" value={formData.familyDetails} onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })} />
                                 <textarea placeholder="Partner Requirements" className="input-field-iconless min-h-[60px]" value={formData.requirements} onChange={(e) => setFormData({ ...formData, requirements: e.target.value })} />
 
                                 <div className="pt-2">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Upload Up to 4 Photos (Required at least 1)</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-2">Upload Up to 4 Photos</p>
                                     <div className="grid grid-cols-4 gap-2">
                                         {imagePreviews.map((src, idx) => (
                                             <div key={idx} className="aspect-square rounded-xl overflow-hidden border-2 border-[#c19206]">
@@ -274,9 +270,7 @@ function RegisterFormContent() {
 
                                 <div className="flex gap-4 pt-4">
                                     <button onClick={handleBack} className="btn-secondary w-20"><FiArrowLeft /></button>
-                                    <button onClick={handleNext} disabled={imageFiles.length === 0} className="btn-primary flex-1">
-                                        Next: Payment
-                                    </button>
+                                    <button onClick={handleNext} disabled={imageFiles.length === 0} className="btn-primary flex-1">Next: Payment</button>
                                 </div>
                             </motion.div>
                         )}
@@ -327,7 +321,6 @@ function RegisterFormContent() {
                                 </div>
                                 <h3 className="text-3xl font-black text-[#4a1111] uppercase">Success!</h3>
                                 <p className="text-gray-500 font-bold mt-2">Aapki profile verification ke liye bhej di gayi hai.</p>
-                                <p className="text-xs text-gray-400 mt-1">Verification usually takes 12-24 hours.</p>
                                 <button onClick={() => router.push('/')} className="mt-8 btn-primary">Return to Home</button>
                             </motion.div>
                         )}
@@ -349,14 +342,12 @@ function RegisterFormContent() {
                     text-transform: uppercase; transition: 0.2s;
                 }
                 .btn-primary:hover:not(:disabled) { background-color: #5e1a1a; transform: translateY(-1px); }
-                .btn-primary:active { transform: translateY(0); }
                 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
                 .btn-secondary {
                     background-color: #f3f4f6; color: #4b5563; padding: 1rem;
                     border-radius: 1.25rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
                     transition: 0.2s;
                 }
-                .btn-secondary:hover { background-color: #e5e7eb; }
             `}</style>
         </div>
     );

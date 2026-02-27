@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
     FiUsers, FiPlusCircle, FiCheckCircle, FiClock,
     FiSettings, FiLogOut, FiFilter, FiDollarSign, FiTrash2, FiEye, FiLoader,
@@ -67,6 +68,7 @@ interface RegistrationRequest {
 
 /* ================= MAIN DASHBOARD ================= */
 export default function AdminDashboardPage() {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState("stats");
     const [profiles, setProfiles] = useState<UserProfile[]>([]);
     const [registrations, setRegistrations] = useState<RegistrationRequest[]>([]);
@@ -74,12 +76,35 @@ export default function AdminDashboardPage() {
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<RegistrationRequest | null>(null);
     const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null);
+    const [isAuthorized, setIsAuthorized] = useState(false);
 
     const API_URL = "http://localhost:5000/api";
 
-    // --- Logic Fix: Using "userToken" to match LoginPage ---
+    // ✅ AUTH CHECK LOGIC
+    useEffect(() => {
+        const token = localStorage.getItem("token"); // Backend se aya hua token
+        const userData = localStorage.getItem("user");
+
+        if (!token || !userData) {
+            router.push("/login");
+            return;
+        }
+
+        try {
+            const user = JSON.parse(userData);
+            if (user.role !== "admin") {
+                alert("Access Denied: You are not an Admin!");
+                router.push("/"); // Non-admin ko home page pe bhej dein
+            } else {
+                setIsAuthorized(true);
+            }
+        } catch (e) {
+            router.push("/login");
+        }
+    }, [router]);
+
     const fetchDashboardData = useCallback(async () => {
-        const token = localStorage.getItem("userToken");
+        const token = localStorage.getItem("token");
         if (!token) return;
 
         setLoading(true);
@@ -103,16 +128,13 @@ export default function AdminDashboardPage() {
     }, [filterRange, API_URL]);
 
     useEffect(() => {
-        const token = localStorage.getItem("userToken");
-        if (!token) {
-            window.location.href = "/login";
-        } else {
+        if (isAuthorized) {
             fetchDashboardData();
         }
-    }, [fetchDashboardData]);
+    }, [fetchDashboardData, isAuthorized]);
 
     const handleAction = async (id: string, action: 'approve' | 'reject' | 'delete-reg') => {
-        const token = localStorage.getItem("userToken");
+        const token = localStorage.getItem("token");
         const confirmMsg = action === 'reject' ? "Reject and Delete this request?" : "Are you sure?";
         if (!confirm(confirmMsg)) return;
 
@@ -128,6 +150,14 @@ export default function AdminDashboardPage() {
             }
         } catch (err) { alert("Action failed"); }
     };
+
+    if (!isAuthorized) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-white font-black text-[#4a1111]">
+                VERIFYING AUTHORITY...
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-[#f8f9fa]">
@@ -153,7 +183,7 @@ export default function AdminDashboardPage() {
                 </nav>
 
                 <div className="p-6">
-                    <button onClick={() => { localStorage.clear(); window.location.href = "/login"; }}
+                    <button onClick={() => { localStorage.clear(); router.push("/login"); }}
                         className="w-full p-4 bg-red-500/20 text-red-400 rounded-2xl font-bold hover:bg-red-500 hover:text-white transition-all">
                         <FiLogOut className="inline mr-2" /> Logout
                     </button>
@@ -189,7 +219,7 @@ export default function AdminDashboardPage() {
                             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="bg-white w-full max-w-6xl max-h-[95vh] rounded-[3rem] overflow-hidden shadow-2xl flex flex-col">
                                 <div className="p-8 bg-[#4a1111] text-white flex justify-between items-center border-b-4 border-[#c19206]">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-[#c19206] rounded-xl flex items-center justify-center text-2xl font-black">{selectedUser.name[0]}</div>
+                                        <div className="w-14 h-14 bg-[#c19206] rounded-xl flex items-center justify-center text-2xl font-black">{selectedUser.name ? selectedUser.name[0] : "?"}</div>
                                         <div>
                                             <h3 className="text-2xl font-black">{selectedUser.name}</h3>
                                             <p className="text-xs font-bold text-[#c19206] uppercase tracking-widest">{selectedUser.package} Package Request</p>
@@ -202,17 +232,21 @@ export default function AdminDashboardPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                                             <h4 className="col-span-2 font-black text-[#4a1111] border-b pb-2 flex items-center gap-2"><FiUsers /> Member Details</h4>
+
                                             <DataField label="Father Name" value={selectedUser.fatherName} />
                                             <DataField label="Contact" value={selectedUser.phone} />
-                                            <DataField label="Age / Gender" value={`${selectedUser.age} / ${selectedUser.gender}`} />
+                                            <DataField label="Age / Gender" value={`${selectedUser.age || '---'} / ${selectedUser.gender || '---'}`} />
                                             <DataField label="City" value={selectedUser.city} />
-                                            <DataField label="Caste / Sect" value={`${selectedUser.caste} (${selectedUser.sect})`} />
+                                            <DataField label="Caste / Sect" value={`${selectedUser.caste || '---'} (${selectedUser.sect || '---'})`} />
                                             <DataField label="Profession" value={selectedUser.occupation} />
                                             <DataField label="Income" value={selectedUser.monthlyIncome} />
                                             <DataField label="Marital Status" value={selectedUser.maritalStatus} />
+
                                             <div className="col-span-2 p-4 bg-white rounded-2xl border">
                                                 <p className="text-[10px] font-bold text-gray-400 uppercase">Requirements</p>
-                                                <p className="text-sm font-medium italic">"{selectedUser.requirements}"</p>
+                                                <p className="text-sm font-medium italic">
+                                                    {selectedUser.requirements ? `"${selectedUser.requirements}"` : "No requirements specified"}
+                                                </p>
                                             </div>
                                         </div>
 
@@ -229,9 +263,11 @@ export default function AdminDashboardPage() {
                                             <div>
                                                 <h4 className="font-black text-[#c19206] mb-3 flex items-center gap-2"><FiImage /> Personal Photos</h4>
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    {selectedUser.images?.map((img, i) => (
-                                                        <img key={i} src={img} alt="user" className="w-full h-24 object-cover rounded-xl border-2 border-white shadow-sm" />
-                                                    ))}
+                                                    {selectedUser.images && selectedUser.images.length > 0 ? (
+                                                        selectedUser.images.map((img, i) => (
+                                                            <img key={i} src={img} alt="user" className="w-full h-24 object-cover rounded-xl border-2 border-white shadow-sm" />
+                                                        ))
+                                                    ) : <p className="text-xs text-gray-400 col-span-2">No photos uploaded</p>}
                                                 </div>
                                             </div>
                                         </div>
@@ -281,7 +317,9 @@ function DataField({ label, value }: { label: string, value?: string | number })
     return (
         <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
             <p className="text-[10px] text-gray-400 font-bold uppercase">{label}</p>
-            <p className="text-[#4a1111] font-bold text-sm">{value || "---"}</p>
+            <p className="text-[#4a1111] font-bold text-sm">
+                {value && String(value).trim() !== "" && !String(value).includes("undefined") ? value : "---"}
+            </p>
         </div>
     );
 }
@@ -294,10 +332,10 @@ function PendingList({ users, onOpenView, onReject }: { users: RegistrationReque
             {pending.map(user => (
                 <div key={user._id} className="bg-white p-5 rounded-[2rem] border-2 border-transparent hover:border-[#c19206] transition-all flex items-center justify-between shadow-sm">
                     <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center font-black text-[#4a1111] border">{user.name[0]}</div>
+                        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center font-black text-[#4a1111] border">{user.name ? user.name[0] : "?"}</div>
                         <div>
                             <h4 className="font-black text-lg text-[#4a1111]">{user.name} <span className="text-[10px] bg-blue-100 text-blue-600 px-2 py-0.5 rounded ml-2">{user.package}</span></h4>
-                            <p className="text-xs font-bold text-gray-400">{user.city} • {user.age} Yrs • {user.occupation}</p>
+                            <p className="text-xs font-bold text-gray-400">{user.city || "No City"} • {user.age || "?? "} Yrs • {user.occupation || "No Profession"}</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
@@ -319,7 +357,7 @@ function ManageProfilesList({ profiles, API_URL, refresh, onEdit }: { profiles: 
         if (!confirm("Delete this profile forever?")) return;
         const res = await fetch(`${API_URL}/admin/profile/${id}`, {
             method: "DELETE",
-            headers: { "Authorization": `Bearer ${localStorage.getItem("userToken")}` }
+            headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
         });
         if (res.ok) refresh();
     };
@@ -418,7 +456,7 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
 
             const res = await fetch(`${API_URL}${endpoint}`, {
                 method: method,
-                headers: { "Authorization": `Bearer ${localStorage.getItem("userToken")}` },
+                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` },
                 body: data
             });
 
@@ -450,7 +488,6 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Basic Info Section */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-4 md:col-span-2">
                         <label className="text-xs font-bold text-gray-400 uppercase ml-2">Display Title & Name</label>
@@ -473,7 +510,6 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
 
                 <hr />
 
-                {/* Personal Stats Section */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Age</label>
@@ -497,14 +533,12 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                     </div>
                 </div>
 
-                {/* Financial & Education */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input type="text" placeholder="Education" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} />
                     <input type="text" placeholder="Occupation" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.occupation} onChange={e => setFormData({ ...formData, occupation: e.target.value })} />
                     <input type="text" placeholder="Monthly Income" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.monthlyIncome} onChange={e => setFormData({ ...formData, monthlyIncome: e.target.value })} />
                 </div>
 
-                {/* Identity */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <input type="text" placeholder="Caste" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.caste} onChange={e => setFormData({ ...formData, caste: e.target.value })} />
                     <input type="text" placeholder="Sect" className="p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.sect} onChange={e => setFormData({ ...formData, sect: e.target.value })} />
