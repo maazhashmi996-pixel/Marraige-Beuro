@@ -34,23 +34,18 @@ export default function SingleProfilePage() {
                     }
                 });
 
-                // Safety Check: Agar response 404 hai ya HTML (unexpected token '<') hai
                 const contentType = res.headers.get("content-type");
                 if (!res.ok || !contentType || !contentType.includes("application/json")) {
-                    // Agar backend 404 bhej raha hai toh yahan handle hoga
-                    setError("Profile details is waqt dastiyab nahi hain ya aapka access khatam ho chuka hai.");
+                    const errorData = contentType?.includes("application/json") ? await res.json() : null;
+                    setError(errorData?.message || "Profile details is waqt dastiyab nahi hain ya aapka access khatam ho chuka hai.");
                     setLoading(false);
                     return;
                 }
 
                 const data = await res.json();
+                // Supporting both direct object or wrapped profile object
+                setProfile(data.profile || data);
 
-                if (res.ok) {
-                    // Logic fix: supporting both direct data or data.profile wrapper
-                    setProfile(data.profile || data);
-                } else {
-                    setError(data.message || "Access Restricted");
-                }
             } catch (err) {
                 setError("Server se rabta nahi ho pa raha. Internet check karein.");
                 console.error("Fetch Error:", err);
@@ -63,7 +58,7 @@ export default function SingleProfilePage() {
     }, [id]);
 
     const getFullImageUrl = (path: string) => {
-        if (!path) return "https://via.placeholder.com/800";
+        if (!path) return "/placeholder.jpg";
         return path.startsWith('http') ? path : `${BASE_URL}${path}`;
     };
 
@@ -136,7 +131,7 @@ export default function SingleProfilePage() {
                             {/* Header Image Section */}
                             <div className="relative h-[450px] md:h-[550px] w-full bg-gray-200">
                                 <img
-                                    src={getFullImageUrl(profile.mainImage)}
+                                    src={getFullImageUrl(profile.mainImage || profile.image)}
                                     alt="Main Profile"
                                     className="w-full h-full object-cover"
                                 />
@@ -148,7 +143,7 @@ export default function SingleProfilePage() {
 
                                 <div className="absolute bottom-10 left-8 md:left-12 text-white">
                                     <h1 className="text-5xl md:text-7xl font-black mb-3 tracking-tighter italic">
-                                        {profile.name || profile.title}
+                                        {profile.name || profile.title || "User Profile"}
                                     </h1>
                                     <p className="opacity-95 text-xl md:text-2xl font-bold flex items-center gap-3">
                                         {profile.gender} <span className="text-[#c19206]">|</span> {profile.age} Years <span className="text-[#c19206]">|</span> {profile.city}
@@ -227,7 +222,7 @@ export default function SingleProfilePage() {
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => window.open(`https://wa.me/${profile.phone?.replace(/\s/g, '') || '923123456789'}`, '_blank')}
+                                            onClick={() => window.open(`https://wa.me/${profile.phone?.toString().replace(/\s/g, '') || '923123456789'}`, '_blank')}
                                             className="bg-[#25D366] text-white px-10 py-5 rounded-2xl font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-[#1eb954] transition-all hover:scale-105"
                                         >
                                             WhatsApp Now

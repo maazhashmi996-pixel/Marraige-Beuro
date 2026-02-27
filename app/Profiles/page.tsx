@@ -14,10 +14,18 @@ export default function FindMatch() {
     useEffect(() => {
         const fetchProfiles = async () => {
             try {
-                // Public Profiles fetch karne ka sahi route
-                const res = await fetch(`${BASE_URL}/api/public/profiles`);
+                // Token lena taake backend ko pata chale login kaun hai
+                const token = localStorage.getItem("userToken");
 
-                if (!res.ok) throw new Error("Failed to fetch from server");
+                // Hum authenticated route use karenge taake opposite gender mile
+                const res = await fetch(`${BASE_URL}/api/users/matches`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                if (!res.ok) throw new Error("Failed to fetch matches");
 
                 const data = await res.json();
 
@@ -27,9 +35,9 @@ export default function FindMatch() {
                 // Backend data ko ProfileCard ke props ke mutabiq format karna
                 const formattedData = rawProfiles.map((p: any) => ({
                     id: p._id,
-                    title: p.name || "No Name",
+                    title: p.name || p.title || "No Name",
                     age: p.age || "N/A",
-                    status: p.status || 'Single',
+                    status: p.maritalStatus || p.status || 'Single',
                     gender: p.gender || "Not specified",
                     city: p.city || "Pakistan",
                     // Image URL construction logic
@@ -57,7 +65,7 @@ export default function FindMatch() {
                 {/* Header Section */}
                 <div className="mb-12">
                     <h1 className="text-4xl font-black text-[#4a1111]">Find Your Perfect Match</h1>
-                    <p className="text-gray-500 mt-2">Browse through our verified profiles to find your soulmate.</p>
+                    <p className="text-gray-500 mt-2 font-medium">Browse through our verified profiles to find your soulmate.</p>
                 </div>
 
                 {/* Main Content Area */}
@@ -77,8 +85,8 @@ export default function FindMatch() {
                         ) : (
                             <div className="col-span-full text-center py-20 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
                                 <div className="text-5xl mb-4">📂</div>
-                                <p className="text-xl font-bold text-gray-400">No profiles found in database.</p>
-                                <p className="text-sm text-gray-400 mt-1">Please add profiles from Admin Panel.</p>
+                                <p className="text-xl font-bold text-gray-400">No matches found at the moment.</p>
+                                <p className="text-sm text-gray-400 mt-1">Please check back later for new profiles.</p>
                             </div>
                         )}
                     </div>
