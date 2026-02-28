@@ -40,8 +40,6 @@ interface UserProfile {
 
 interface RegistrationRequest {
     _id: string;
-    email: "",         // <-- Naya add kiya gaya
-    phone: "",
     name: string;
     fatherName: string;
     email: string;
@@ -416,14 +414,18 @@ function StatCard({ label, value, color }: { label: string, value: any, color: s
         </div>
     );
 }
-
 /* ================= CREATE / EDIT FORM COMPONENT ================= */
-function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL: string, refresh: () => void, initialData?: UserProfile, isEdit?: boolean }) {
+function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL: string, refresh: () => void, initialData?: UserProfile | any, isEdit?: boolean }) {
     const [loading, setLoading] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [previews, setPreviews] = useState<string[]>(initialData?.gallery || []);
+
     const [formData, setFormData] = useState({
         name: initialData?.name || "",
+        email: initialData?.email || "",
+        password: "", // <--- Added for Login Access
+        package: initialData?.package || "Basic Plan", // <--- NEW: Package Field
+        phone: initialData?.phone || "",
         fatherName: initialData?.fatherName || "",
         title: initialData?.title || "",
         age: initialData?.age || "",
@@ -459,23 +461,19 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
         e.preventDefault();
         setLoading(true);
 
-        // 1. FormData tayyar karein
         const data = new FormData();
-
-        // 2. Sirf wo data append karein jo khali nahi hai
         Object.entries(formData).forEach(([k, v]) => {
+            // Edit mode mein agar password khali hai to append na karein
+            if (k === "password" && v === "" && isEdit) return;
+
             if (v !== "" && v !== null && v !== undefined) {
                 data.append(k, String(v));
             }
         });
 
-        // 3. Images append karein
         selectedFiles.forEach(f => {
-            data.append("images", f); // Backend par 'images' name hona chahiye
+            data.append("images", f);
         });
-
-        // Debugging ke liye (Optional)
-        console.log("Sending Data...");
 
         try {
             const endpoint = isEdit ? `/admin/profile/${initialData?._id}` : `/admin/create-profile`;
@@ -485,26 +483,15 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                 method: method,
                 headers: {
                     "Authorization": `Bearer ${localStorage.getItem("userToken")}`
-                    // Yaad rakhein: Content-Type yahan nahi likhna
                 },
                 body: data
             });
 
-            // 4. Response check karein
-            const result = await res.json();
-
             if (res.ok) {
-                alert(isEdit ? "Profile Updated Successfully!" : "Profile Published Successfully!");
+                alert(isEdit ? "Profile & Login Credentials Updated!" : "Profile Published & User Account Created!");
                 if (!isEdit) {
-                    // Form reset logic
-                    const [formData, setFormData] = useState({
-                        name: initialData?.name || "",
-                        email: initialData?.email || "", // Initial state mein bhi zaroori hai
-                        // ... baki sab
-                    });
                     setFormData({
-
-                        name: "", fatherName: "", title: "", age: "", gender: "Male",
+                        name: "", email: "", password: "", package: "Basic Plan", phone: "", fatherName: "", title: "", age: "", gender: "Male",
                         caste: "", religion: "Islam", sect: "Sunni", city: "",
                         height: "", weight: "", maritalStatus: "Single",
                         education: "", occupation: "", monthlyIncome: "",
@@ -516,13 +503,11 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
                 }
                 refresh();
             } else {
-                // Agar 400 error aya hai to backend ka message dikhayein
-                alert(`Backend Error: ${result.message || "Something went wrong"}`);
-                console.error("Server Error Detail:", result);
+                const result = await res.json();
+                alert(`Error: ${result.message}`);
             }
         } catch (err) {
-            console.error("Fetch Error:", err);
-            alert("Server connection failed. Please check if backend is running.");
+            alert("Connection Error!");
         } finally {
             setLoading(false);
         }
@@ -532,79 +517,105 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit }: { API_URL:
         <div className={`${isEdit ? '' : 'bg-white p-8 rounded-[3rem] shadow-xl border border-gray-100'}`}>
             {!isEdit && (
                 <h3 className="text-2xl font-black text-[#4a1111] mb-8 flex items-center gap-3">
-                    <FiPlusCircle className="text-[#c19206]" /> Create Manual Public Profile
+                    <FiPlusCircle className="text-[#c19206]" /> Create Manual Profile & User Account
                 </h3>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* 1. Login Credentials & Basic Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-4 md:col-span-2">
-                        <label className="text-xs font-bold text-gray-400 uppercase ml-2">Display Title & Name</label>
-                        <input type="text" placeholder="Profile Title (e.g. Educated Sunni Girl - Doctor)" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+                        <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Login Credentials & Package</label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <input type="email" placeholder="Login Email" className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 outline-none font-bold" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required />
+                            <input type="password" placeholder={isEdit ? "New Password (Leave blank)" : "Set Login Password"} className="p-4 rounded-2xl bg-blue-50/50 border border-blue-100 outline-none font-bold" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} required={!isEdit} />
+                        </div>
+
+                        {/* NEW: Package Selection Field */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Assign Package</label>
+                                <select
+                                    className="w-full p-4 rounded-2xl bg-yellow-50 border border-yellow-200 outline-none font-bold text-[#4a1111]"
+                                    value={formData.package}
+                                    onChange={e => setFormData({ ...formData, package: e.target.value })}
+                                >
+                                    <option value="Basic Plan">Basic Plan (3 Views)</option>
+                                    <option value="Gold Plan">Gold Plan (10 Views)</option>
+                                    <option value="Diamond Plan">Diamond Plan (Unlimited)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Profile Title</label>
+                                <input type="text" placeholder="e.g. Doctor, Engineer..." className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} required />
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-4">
                             <input type="text" placeholder="Full Name" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-                            <input type="text" placeholder="Father Name" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.fatherName} onChange={e => setFormData({ ...formData, fatherName: e.target.value })} />
+                            <input type="text" placeholder="Phone Number" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                         </div>
                     </div>
 
-                    <div className="border-2 border-dashed border-gray-200 rounded-[2rem] p-4 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 relative">
+                    {/* Photo Upload Section */}
+                    <div className="border-2 border-dashed border-gray-200 rounded-[2rem] p-4 flex flex-col items-center justify-center bg-gray-50 relative">
                         <FiUploadCloud className="text-3xl text-[#c19206] mb-1" />
-                        <p className="text-xs font-bold text-gray-500">Public Photos</p>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase">Photos</p>
                         <input type="file" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFileChange} />
                         <div className="flex gap-1 mt-2 flex-wrap justify-center">
-                            {previews.slice(0, 4).map((src, i) => <img key={i} src={src} alt="preview" className="w-8 h-8 rounded-lg object-cover border shadow-sm" />)}
+                            {previews.slice(0, 3).map((src, i) => <img key={i} src={src} alt="p" className="w-8 h-8 rounded-lg object-cover border" />)}
                         </div>
                     </div>
                 </div>
 
-                <hr className="border-gray-100" />
-
+                {/* 2. Basic Info Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Age</label>
-                        <input type="number" placeholder="Age" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none" value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })} required />
+                        <input type="number" placeholder="Age" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.age} onChange={e => setFormData({ ...formData, age: e.target.value })} />
                     </div>
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Gender</label>
                         <select className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })}>
-                            <option>Male</option>
-                            <option>Female</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
                         </select>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">City</label>
-                        <input type="text" placeholder="City" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} required />
+                        <input type="text" placeholder="City" className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
                     </div>
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">Marital Status</label>
                         <select className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.maritalStatus} onChange={e => setFormData({ ...formData, maritalStatus: e.target.value })}>
-                            <option>Single</option>
-                            <option>Divorced</option>
-                            <option>Widowed</option>
-                            <option>Separated</option>
+                            <option value="Single">Single</option>
+                            <option value="Divorced">Divorced</option>
+                            <option value="Widowed">Widowed</option>
                         </select>
                     </div>
                 </div>
 
+                {/* 3. Professional & Caste Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input type="text" placeholder="Education" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.education} onChange={e => setFormData({ ...formData, education: e.target.value })} />
                     <input type="text" placeholder="Occupation" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.occupation} onChange={e => setFormData({ ...formData, occupation: e.target.value })} />
-                    <input type="text" placeholder="Monthly Income" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.monthlyIncome} onChange={e => setFormData({ ...formData, monthlyIncome: e.target.value })} />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <input type="text" placeholder="Caste" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.caste} onChange={e => setFormData({ ...formData, caste: e.target.value })} />
-                    <input type="text" placeholder="Sect" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.sect} onChange={e => setFormData({ ...formData, sect: e.target.value })} />
-                    <input type="text" placeholder="Height" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.height} onChange={e => setFormData({ ...formData, height: e.target.value })} />
-                    <input type="text" placeholder="Mother Tongue" className="p-4 rounded-2xl bg-gray-50 border outline-none font-bold" value={formData.motherTongue} onChange={e => setFormData({ ...formData, motherTongue: e.target.value })} />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                    <textarea placeholder="Requirements / Brief About Family" className="p-4 rounded-2xl bg-gray-50 border outline-none min-h-[100px] font-bold" value={formData.requirements} onChange={e => setFormData({ ...formData, requirements: e.target.value })} />
+                {/* 4. Text Areas */}
+                <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase ml-2">About Candidate & Family</label>
+                    <textarea
+                        placeholder="Candidate and family details..."
+                        className="w-full p-4 rounded-2xl bg-gray-50 border outline-none font-bold min-h-[100px] resize-none"
+                        value={formData.about}
+                        onChange={e => setFormData({ ...formData, about: e.target.value })}
+                    />
                 </div>
 
-                <button type="submit" disabled={loading} className={`w-full py-5 rounded-2xl font-black text-lg transition-all ${loading ? 'bg-gray-200 text-gray-400' : 'bg-[#c19206] text-white hover:bg-[#4a1111] shadow-xl hover:shadow-2xl'}`}>
-                    {loading ? "SYNCING DATA..." : isEdit ? "UPDATE PROFILE" : "PUBLISH LIVE PROFILE"}
+                {/* 5. Submit Button */}
+                <button type="submit" disabled={loading} className="w-full py-5 bg-[#4a1111] text-white rounded-[2rem] font-black text-xl hover:bg-[#c19206] transition-all shadow-xl flex items-center justify-center gap-3">
+                    {loading ? <FiLoader className="animate-spin" /> : <><FiCheckCircle /> {isEdit ? "UPDATE ACCOUNT" : "CREATE ACCOUNT & PROFILE"}</>}
                 </button>
             </form>
         </div>
