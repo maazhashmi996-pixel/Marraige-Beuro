@@ -27,9 +27,9 @@ export default function ContactPage() {
                     {/* Left Side: Contact Details */}
                     <div className="lg:col-span-1 space-y-6">
                         {[
-                            { icon: <Phone size={24} />, label: "Phone", val: "+92 327 7770361" },
+                            { icon: <Phone size={24} />, label: "Phone", val: "+923315290212" },
                             { icon: <Mail size={24} />, label: "Email", val: "Info@sehrishmarriage.com" },
-                            { icon: <MapPin size={24} />, label: "Address", val: "2, H Block Sector 2, DHA Rahbar, Lahore" }
+                            { icon: <MapPin size={24} />, label: "Address", val: "Defence Mor Near Cavalary Ground Midland Plaza Lahore" }
                         ].map((item, i) => (
                             <motion.div
                                 key={i}

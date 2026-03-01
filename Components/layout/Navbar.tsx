@@ -1,6 +1,7 @@
 "use client";
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Image component add kiya hai
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
@@ -17,10 +18,15 @@ export default function Navbar() {
         <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
 
-                {/* Logo Section */}
-                <Link href="/" className="flex flex-col">
-                    <span className="text-2xl font-black text-[#4a1111] leading-none">Aasan Rishta</span>
-                    <span className="text-[10px] tracking-[0.3em] text-[#c19206] font-bold uppercase">Marriage Bureau</span>
+                {/* Logo Section - Ab yahan PNG Image use hogi */}
+                <Link href="/" className="flex items-center">
+                    <Image
+                        src="/Logo.png" // Apni logo file ka path yahan likhein (e.g., /public/logo.png)
+                        alt="Aasan Rishta Logo"
+                        width={120} // Logo ki width adjust karein
+                        height={50}  // Logo ki height adjust karein
+                        className="object-contain"
+                    />
                 </Link>
 
                 {/* Desktop Links */}
@@ -32,14 +38,16 @@ export default function Navbar() {
                     ))}
                 </div>
 
-                {/* Desktop Button & Mobile Toggle */}
+                {/* Desktop Login Button & Mobile Toggle */}
                 <div className="flex items-center space-x-4">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        className="hidden md:block bg-[#4a1111] text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg shadow-maroon/20"
-                    >
-                        Register Now
-                    </motion.button>
+                    <Link href="/Login"> {/* Path /Login kar diya hai */}
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            className="hidden md:block bg-[#4a1111] text-white px-8 py-2 rounded-full text-sm font-bold shadow-lg shadow-maroon/20"
+                        >
+                            Login
+                        </motion.button>
+                    </Link>
 
                     {/* Mobile Menu Button */}
                     <button
@@ -77,9 +85,11 @@ export default function Navbar() {
                                     {link.name}
                                 </Link>
                             ))}
-                            <button className="bg-[#4a1111] text-white px-6 py-3 rounded-xl text-center font-bold">
-                                Register Now
-                            </button>
+                            <Link href="/Login" onClick={() => setIsOpen(false)}>
+                                <button className="w-full bg-[#4a1111] text-white px-10 py-20 rounded-xl text-center font-bold">
+                                    Login
+                                </button>
+                            </Link>
                         </div>
                     </motion.div>
                 )}

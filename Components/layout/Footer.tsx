@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import Image from 'next/image'; // Image component import kiya
 import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -10,11 +11,16 @@ export default function Footer() {
         <footer className="bg-[#4a1111] text-white pt-16 pb-8">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
 
-                {/* Column 1: Brand Identity */}
+                {/* Column 1: Brand Identity - Updated with PNG Logo */}
                 <div className="space-y-6">
-                    <Link href="/" className="flex flex-col">
-                        <span className="text-2xl font-black tracking-tight">Aasan Rishta</span>
-                        <span className="text-[10px] tracking-[0.3em] text-[#c19206] font-bold uppercase">Marriage Bureau</span>
+                    <Link href="/" className="inline-block">
+                        <Image
+                            src="/Logo.png" // Apni white ya transparent logo file ka path yahan likhein
+                            alt="Aasan Rishta Logo"
+                            width={180}
+                            height={60}
+                            className="object-contain"
+                        />
                     </Link>
                     <p className="text-gray-300 text-sm leading-relaxed">
                         Connecting hearts with dignity and tradition. We are Pakistan's most trusted personalized matchmaking service.
@@ -59,11 +65,11 @@ export default function Footer() {
                     <ul className="space-y-4 text-sm text-gray-300">
                         <li className="flex items-start gap-3">
                             <MapPin size={20} className="text-[#c19206] shrink-0" />
-                            <span>2, H Block Sector 2 DHA Rahbar Lahore</span>
+                            <span>Defence Mor Near Cavalary Ground Midland Plaza Lahore</span>
                         </li>
                         <li className="flex items-center gap-3">
                             <Phone size={18} className="text-[#c19206] shrink-0" />
-                            <span>+92 327 7770361</span>
+                            <span>+923315290212</span>
                         </li>
                         <li className="flex items-center gap-3">
                             <Mail size={18} className="text-[#c19206] shrink-0" />

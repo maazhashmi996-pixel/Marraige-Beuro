@@ -9,7 +9,7 @@ export default function Contact() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {[
-                        { icon: <Phone size={32} />, label: "Phone Number", val: "+92 327 7770361" },
+                        { icon: <Phone size={32} />, label: "Phone Number", val: "+923315290212" },
                         { icon: <Mail size={32} />, label: "Email Us", val: "Info@sehrishmarriage.com" },
                         { icon: <MapPin size={32} />, label: "Address", val: "2, Midland Plaza Defence Near Cavalary Ground" }
                     ].map((item, i) => (
