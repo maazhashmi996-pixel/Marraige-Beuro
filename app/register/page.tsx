@@ -129,7 +129,7 @@ function RegisterFormContent() {
             // Mapping form data to backend keys
             (Object.entries(formData) as [keyof FormData, string][]).forEach(([key, value]) => {
                 if (key === 'monthlyIncome') {
-                    dataToSend.append("income", value); // Backend expects 'income'
+                    dataToSend.append("monthlyIncome", value); // Backend expects 'income'
                 } else {
                     dataToSend.append(key, value);
                 }
@@ -276,8 +276,25 @@ function RegisterFormContent() {
                                     </select>
                                     <input type="text" placeholder="Height (e.g. 5'6'')" className="input-field-simple" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })} />
                                 </div>
+                                <input
+                                    type="text"
+                                    placeholder="Weight (kg)"
+                                    className="input-field-simple"
+                                    value={formData.weight}
+                                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="House Size (e.g. 5 Marla)"
+                                    className="input-field-simple"
+                                    value={formData.houseSize}
+                                    onChange={(e) => setFormData({ ...formData, houseSize: e.target.value })}
+                                />
 
-                                <textarea placeholder="Family Background (Brothers, Sisters details...)" className="input-field-simple min-h-[80px] py-3" value={formData.familyDetails} onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })} />
+                                <textarea placeholder="Family Background (Brothers, Sisters details...)" className="input-field-simple min-h-[80px] py-3" value={formData.familyDetails
+
+
+                                } onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })} />
                                 <textarea placeholder="Partner Requirements (Life partner kaisa ho?)" className="input-field-simple min-h-[80px] py-3" value={formData.requirements} onChange={(e) => setFormData({ ...formData, requirements: e.target.value })} />
 
                                 <div className="pt-2">
@@ -321,11 +338,11 @@ function RegisterFormContent() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Account Holder</p>
-                                            <p className="text-[#4a1111] font-black">Dawood Gee Dawood</p>
+                                            <p className="text-[#4a1111] font-black">Sehrish Kanwal</p>
                                         </div>
                                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                                             <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">EasyPaisa / JazzCash</p>
-                                            <p className="text-[#4a1111] font-black text-xl tracking-tighter">UnderProcess</p>
+                                            <p className="text-[#4a1111] font-black text-xl tracking-tighter">+923137500449</p>
                                         </div>
                                     </div>
 

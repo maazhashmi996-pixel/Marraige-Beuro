@@ -62,11 +62,13 @@ interface RegistrationRequest {
     weight?: string;
     disability?: string;
     requirements?: string;
+    about?: string;
     familyDetails?: string;
     maritalStatus?: string;
     images?: string[];
     paymentScreenshot?: string;
     createdAt?: string;
+
 }
 
 /* ================= MAIN DASHBOARD ================= */
@@ -136,7 +138,7 @@ export default function AdminDashboardPage() {
 
     const handleAction = async (id: string, action: 'approve' | 'reject' | 'delete-profile') => {
         const token = localStorage.getItem("userToken");
-        const confirmMsg = action === 'reject' ? "Reject and Delete this request?" : "Delete this live profile forever?";
+        const confirmMsg = action === 'reject' ? "Reject and Delete this request?" : "Are Your Sure Accept this profile forever?";
         if (!confirm(confirmMsg)) return;
 
         try {
@@ -332,57 +334,108 @@ function PendingList({ users, onOpenView, onReject }: any) {
     );
 }
 
-/* ================= COMPONENT: MANAGE PROFILES ================= */
 function ManageProfilesList({ profiles, onDelete, onEdit }: any) {
+    const BACKEND_URL = "https://marraige-beuro-backend-production.up.railway.app";
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profiles.map((p: any) => (
-                <div key={p._id} className="bg-white p-6 rounded-[2.5rem] border shadow-sm flex items-center gap-4 hover:shadow-xl transition-all group">
-                    <img src={p.mainImage} className="w-20 h-20 rounded-2xl object-cover shadow-md" alt="" />
-                    <div className="flex-1 min-w-0">
-                        <h4 className="font-black text-[#4a1111] truncate">{p.name}</h4>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase truncate">{p.city} • {p.caste}</p>
-                        <div className="flex gap-2 mt-3">
-                            <button onClick={() => onEdit(p)} className="flex-1 py-2 bg-gray-100 text-[#4a1111] rounded-xl font-bold text-[10px] uppercase hover:bg-[#c19206] hover:text-white transition-all flex items-center justify-center gap-1"><FiEdit3 /> Edit</button>
-                            <button onClick={() => onDelete(p._id)} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"><FiTrash2 size={14} /></button>
+            {profiles.map((p: any) => {
+                // --- IMAGE LOGIC FIX ---
+                let imageSrc = "/placeholder.jpg"; // Default fallback
+
+                if (p.mainImage && p.mainImage.trim() !== "") {
+                    // Agar image base64 hai ya pehle se full URL hai
+                    if (p.mainImage.startsWith('data:image') || p.mainImage.startsWith('http')) {
+                        imageSrc = p.mainImage;
+                    } else {
+                        // Agar sirf filename hai to backend path jodo
+                        imageSrc = `${BACKEND_URL}/uploads/${p.mainImage}`;
+                    }
+                }
+
+                return (
+                    <div key={p._id} className="bg-white p-6 rounded-[2.5rem] border shadow-sm flex items-center gap-4 hover:shadow-xl transition-all group">
+
+                        {/* Image Wrapper */}
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 shadow-md border border-gray-50">
+                            <img
+                                src={imageSrc}
+                                className="w-full h-full object-cover"
+                                alt={p.name || "Profile"}
+                                // Fallback agar image load na ho (Network issue or broken link)
+                                onError={(e: any) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "https://placehold.co/200x200?text=No+Photo";
+                                }}
+                            />
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                            <h4 className="font-black text-[#4a1111] truncate">{p.name}</h4>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase truncate">
+                                {p.city || "City N/A"} • {p.caste || "Caste N/A"}
+                            </p>
+
+                            <div className="flex gap-2 mt-3">
+                                <button
+                                    onClick={() => onEdit(p)}
+                                    className="flex-1 py-2 bg-gray-100 text-[#4a1111] rounded-xl font-bold text-[10px] uppercase hover:bg-[#c19206] hover:text-white transition-all flex items-center justify-center gap-1"
+                                >
+                                    <FiEdit3 /> Edit
+                                </button>
+                                <button
+                                    onClick={() => onDelete(p._id)}
+                                    className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                >
+                                    <FiTrash2 size={14} />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
-
 /* ================= COMPONENT: CREATE PROFILE FORM ================= */
 function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onClose, setActiveTab }: any) {
-    const [formData, setFormData] = useState<any>(initialData || {
-        name: "", fatherName: "", age: "", gender: "Male", city: "", caste: "", sect: "",
-        occupation: "", monthlyIncome: "", education: "", maritalStatus: "Never Married",
+    // 1. Defaults fields wahi hain jo aapne di hain
+    const defaults = {
+        name: "", fatherName: "", email: "", age: "", gender: "Male", city: "", caste: "", sect: "",
+        occupation: "", monthlyIncome: "", education: "", maritalStatus: "Never Married", familyDetails: "",
         motherTongue: "", houseType: "Own", houseSize: "", requirements: "", about: "",
-        mainImage: "", gallery: []
+        mainImage: "", password: "", phone: "", disability: "", height: "", weight: "", package: "Basic Plan", gallery: []
+    };
+
+    // 2. Updated State: Jo Edit ke waqt initialData load karegi
+    const [formData, setFormData] = useState<any>(() => {
+        if (isEdit && initialData) {
+            return { ...defaults, ...initialData };
+        }
+        return defaults;
     });
+
     const [uploading, setUploading] = useState(false);
 
+    // 3. handleFileChange: Functional state update ke saath (taake images mix na hon)
     const handleFileChange = async (e: any, type: 'main' | 'gallery') => {
         const files = e.target.files;
         if (!files.length) return;
 
         setUploading(true);
-        const data = new FormData();
-
-        // Note: For production, you should upload to Cloudinary directly from client
-        // This is a placeholder for your upload logic
         try {
             for (let file of files) {
-                data.append("file", file);
-                data.append("upload_preset", "your_preset"); // Replace with yours
-
-                // Demo logic: using local state to simulate for now
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
                 reader.onloadend = () => {
-                    if (type === 'main') setFormData({ ...formData, mainImage: reader.result });
-                    else setFormData({ ...formData, gallery: [...formData.gallery, reader.result] });
+                    if (type === 'main') {
+                        setFormData((prev: any) => ({ ...prev, mainImage: reader.result }));
+                    } else {
+                        setFormData((prev: any) => ({
+                            ...prev,
+                            gallery: [...prev.gallery, reader.result]
+                        }));
+                    }
                 };
             }
             toast.success("Images Selected");
@@ -393,6 +446,7 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
         }
     };
 
+    // 4. handleSubmit: Aapka original logic (unchanged)
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         const token = localStorage.getItem("userToken");
@@ -443,26 +497,51 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
                     <div className="md:col-span-3 p-6 bg-gray-50 rounded-[2rem] border-2 border-dashed flex items-center justify-center relative overflow-hidden">
                         <div className="text-center">
                             <FiUploadCloud className="text-3xl text-gray-300 mx-auto mb-2" />
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gallery Upload ({formData.gallery.length})</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gallery Upload ({formData.gallery?.length || 0})</p>
                             <input type="file" multiple onChange={(e) => handleFileChange(e, 'gallery')} className="absolute inset-0 opacity-0 cursor-pointer" />
                         </div>
                     </div>
                 </div>
 
+                {/* All Fields (Exactly as you provided) */}
                 <InputField label="Full Name" value={formData.name} onChange={(v: string) => setFormData({ ...formData, name: v })} />
                 <InputField label="Father Name" value={formData.fatherName} onChange={(v: string) => setFormData({ ...formData, fatherName: v })} />
+                <InputField label="Email (Required)" type="email" value={formData.email} onChange={(v: string) => setFormData({ ...formData, email: v })} />
+                <InputField label="Password (Required)" type="password" value={formData.password} onChange={(v: string) => setFormData({ ...formData, password: v })} />
+                <InputField label="Phone Number" value={formData.phone} onChange={(v: string) => setFormData({ ...formData, phone: v })} />
+
                 <SelectField label="Gender" options={["Male", "Female"]} value={formData.gender} onChange={(v: string) => setFormData({ ...formData, gender: v })} />
                 <InputField label="Age" type="number" value={formData.age} onChange={(v: string) => setFormData({ ...formData, age: v })} />
+                <SelectField label="Marital Status" options={["Never Married", "Divorced", "Widowed", "Separated"]} value={formData.maritalStatus} onChange={(v: string) => setFormData({ ...formData, maritalStatus: v })} />
                 <InputField label="City" value={formData.city} onChange={(v: string) => setFormData({ ...formData, city: v })} />
+                <InputField
+                    label="Family Detail (e.g. 2 Brothers, 1 Sister)"
+                    value={formData.familyDetails}
+                    onChange={(v: string) => setFormData({ ...formData, familyDetails: v })}
+                />
+
+                <h3 className="col-span-full font-bold text-lg border-b pb-2 mt-4">Background & Job</h3>
                 <InputField label="Caste" value={formData.caste} onChange={(v: string) => setFormData({ ...formData, caste: v })} />
                 <InputField label="Sect" value={formData.sect} onChange={(v: string) => setFormData({ ...formData, sect: v })} />
-                <InputField label="Occupation" value={formData.occupation} onChange={(v: string) => setFormData({ ...formData, occupation: v })} />
-                <InputField label="Monthly Income" value={formData.monthlyIncome} onChange={(v: string) => setFormData({ ...formData, monthlyIncome: v })} />
-                <SelectField label="Marital Status" options={["Never Married", "Divorced", "Widowed", "Separated"]} value={formData.maritalStatus} onChange={(v: string) => setFormData({ ...formData, maritalStatus: v })} />
                 <InputField label="Mother Tongue" value={formData.motherTongue} onChange={(v: string) => setFormData({ ...formData, motherTongue: v })} />
                 <InputField label="Education" value={formData.education} onChange={(v: string) => setFormData({ ...formData, education: v })} />
+                <InputField label="Occupation" value={formData.occupation} onChange={(v: string) => setFormData({ ...formData, occupation: v })} />
+                <InputField label="Monthly Income" value={formData.monthlyIncome} onChange={(v: string) => setFormData({ ...formData, monthlyIncome: v })} />
+
+                <h3 className="col-span-full font-bold text-lg border-b pb-2 mt-4">Physical & House Details</h3>
+                <InputField label="Height" value={formData.height} onChange={(v: string) => setFormData({ ...formData, height: v })} />
+                <InputField label="Weight" value={formData.weight} onChange={(v: string) => setFormData({ ...formData, weight: v })} />
+                <InputField label="House Type (e.g. Own/Rent)" value={formData.houseType} onChange={(v: string) => setFormData({ ...formData, houseType: v })} />
+                <InputField label="House Size (e.g. 5 Marla)" value={formData.houseSize} onChange={(v: string) => setFormData({ ...formData, houseSize: v })} />
+                <InputField label="Disability (If any)" value={formData.disability} onChange={(v: string) => setFormData({ ...formData, disability: v })} />
 
                 <div className="md:col-span-3">
+                    <SelectField
+                        label="Package Plan"
+                        options={["Basic Plan", "Gold Plan", "Diamond Plan"]}
+                        value={formData.package}
+                        onChange={(v: string) => setFormData({ ...formData, package: v })}
+                    />
                     <label className="text-[10px] font-black text-gray-400 uppercase ml-4 mb-2 block">Candidate Requirements</label>
                     <textarea value={formData.requirements} onChange={(e) => setFormData({ ...formData, requirements: e.target.value })} className="w-full p-6 bg-gray-50 rounded-[2rem] border-2 border-transparent focus:border-[#c19206] focus:bg-white transition-all outline-none font-bold text-[#4a1111]" rows={4} />
                 </div>
@@ -474,13 +553,12 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
         </form>
     );
 }
-
 /* ================= UI HELPERS ================= */
 function InputField({ label, value, onChange, type = "text" }: any) {
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase ml-4 block">{label}</label>
-            <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full p-5 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#c19206] focus:bg-white transition-all outline-none font-bold text-[#4a1111] text-sm" />
+            <input type={type} value={value || ""} onChange={(e) => onChange(e.target.value)} className="w-full p-5 bg-gray-50 rounded-2xl border-2 border-transparent focus:border-[#c19206] focus:bg-white transition-all outline-none font-bold text-[#4a1111] text-sm" />
         </div>
     );
 }
@@ -540,6 +618,16 @@ function ViewRequestModal({ user, onClose, onApprove, onReject }: any) {
                                     <DataField label="Sect / Maslak" value={user.sect} />
                                     <DataField label="Marital Status" value={user.maritalStatus} />
                                     <DataField label="Occupation" value={user.occupation} />
+                                    <DataField label="Education" value={user.education} />
+                                    <DataField label="Mother Tongue" value={user.motherTongue} />
+                                    <DataField label="Height" value={user.height} />
+                                    <DataField label="Weight" value={user.weight} />
+                                    <DataField label="Monthly Income" value={user.monthlyIncome} />
+                                    <DataField label="House Size" value={user.houseSize} />
+                                    <DataField label="House Type" value={user.houseType} />
+                                    <DataField label="Family Detail" value={user.familyDetails} />
+                                    <DataField label="About" value={user.about} />
+                                    <DataField label="Diability" value={user.disability} />
                                 </div>
                             </section>
 
@@ -548,20 +636,56 @@ function ViewRequestModal({ user, onClose, onApprove, onReject }: any) {
                                 <p className="text-xl font-bold italic leading-relaxed text-white/90">"{user.requirements || 'No specific requirements logged.'}"</p>
                             </section>
                         </div>
+                        {/* RIGHT: Images (THE FIX IS HERE) */}
+                        {/* RIGHT: Images & Payment (Clean Version) */}
+                        <div className="lg:col-span-4 space-y-10">
+                            {/* User Gallery */}
+                            <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm">
+                                <h4 className="text-xs font-black text-[#c19206] uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <FiImage /> Profile Gallery
+                                </h4>
+                                {user.images && user.images.length > 0 ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {user.images.map((img: string, idx: number) => (
+                                            <a key={idx} href={img} target="_blank" rel="noreferrer" className="block group overflow-hidden rounded-3xl shadow-md border-2 border-white">
+                                                <img
+                                                    src={img}
+                                                    alt="User"
+                                                    className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500 cursor-zoom-in"
+                                                />
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="h-40 bg-gray-50 rounded-[2rem] border-2 border-dashed flex items-center justify-center text-gray-400 font-bold italic">
+                                        No Gallery Images
+                                    </div>
+                                )}
+                            </div>
 
-                        <div className="lg:col-span-4 space-y-8">
-                            <div>
-                                <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2"><FiCreditCard /> Transaction Link</h4>
+                            {/* Transaction Section */}
+                            <div className="bg-blue-50/30 p-6 rounded-[2.5rem] border border-blue-100">
+                                <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <FiCreditCard /> Payment Evidence
+                                </h4>
                                 {user.paymentScreenshot ? (
-                                    <a href={user.paymentScreenshot} target="_blank" rel="noreferrer" className="block p-2 bg-white rounded-[2rem] border-2 border-blue-100 shadow-xl shadow-blue-500/10 group overflow-hidden">
-                                        <div className="relative h-64 rounded-[1.5rem] overflow-hidden">
-                                            <img src={user.paymentScreenshot} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="payment" />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                <FiEye className="text-white text-3xl" />
+                                    <a href={user.paymentScreenshot} target="_blank" rel="noreferrer" className="block group">
+                                        <div className="relative h-72 rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl">
+                                            <img
+                                                src={user.paymentScreenshot}
+                                                className="w-full h-full object-contain bg-white"
+                                                alt="payment"
+                                            />
+                                            <div className="absolute inset-0 bg-blue-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <span className="bg-white text-blue-600 px-4 py-2 rounded-full font-black text-xs">VIEW FULL RECEIPT</span>
                                             </div>
                                         </div>
                                     </a>
-                                ) : <div className="h-64 bg-gray-100 rounded-[2rem] border-2 border-dashed flex items-center justify-center text-gray-400 font-bold italic uppercase">Void Transaction</div>}
+                                ) : (
+                                    <div className="h-32 bg-red-50 rounded-[2rem] border-2 border-dashed border-red-100 flex items-center justify-center text-red-400 font-black text-xs uppercase">
+                                        Receipt Missing
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

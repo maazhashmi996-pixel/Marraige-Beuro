@@ -1,7 +1,8 @@
 "use client";
 import { useState } from 'react';
+import { useRouter } from "next/navigation";
 import Link from 'next/link';
-import Image from 'next/image'; // Image component add kiya hai
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Navbar() {
@@ -18,13 +19,13 @@ export default function Navbar() {
         <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
             <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
 
-                {/* Logo Section - Ab yahan PNG Image use hogi */}
+                {/* Logo Section */}
                 <Link href="/" className="flex items-center">
                     <Image
-                        src="/Logo.png" // Apni logo file ka path yahan likhein (e.g., /public/logo.png)
+                        src="/Logo.png"
                         alt="Aasan Rishta Logo"
-                        width={120} // Logo ki width adjust karein
-                        height={50}  // Logo ki height adjust karein
+                        width={120}
+                        height={50}
                         className="object-contain"
                     />
                 </Link>
@@ -38,9 +39,10 @@ export default function Navbar() {
                     ))}
                 </div>
 
-                {/* Desktop Login Button & Mobile Toggle */}
+                {/* Desktop Login Button */}
                 <div className="flex items-center space-x-4">
-                    <Link href="/Login"> {/* Path /Login kar diya hai */}
+                    {/* MAINE YAHAN /login (small l) KAR DIYA HAI */}
+                    <Link href="/login">
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             className="hidden md:block bg-[#4a1111] text-white px-8 py-2 rounded-full text-sm font-bold shadow-lg shadow-maroon/20"
@@ -85,8 +87,9 @@ export default function Navbar() {
                                     {link.name}
                                 </Link>
                             ))}
-                            <Link href="/Login" onClick={() => setIsOpen(false)}>
-                                <button className="w-full bg-[#4a1111] text-white px-10 py-20 rounded-xl text-center font-bold">
+                            <Link href="/login" onClick={() => setIsOpen(false)}>
+                                {/* py-20 ko py-4 kar diya taake button normal lage */}
+                                <button className="w-full bg-[#4a1111] text-white px-10 py-4 rounded-xl text-center font-bold">
                                     Login
                                 </button>
                             </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchMatches, unlockProfile } from '@/services/api';
 import { toast } from 'react-hot-toast';
@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiLock, FiUnlock, FiMapPin, FiPhone,
     FiShield, FiUser, FiInfo, FiPlus,
-    FiLogOut, FiExternalLink, FiX
+    FiLogOut, FiExternalLink, FiX, FiFilter, FiSearch
 } from 'react-icons/fi';
 
 interface UserProfile {
@@ -42,6 +42,11 @@ export default function MatchesPage() {
     const [selectedProfile, setSelectedProfile] = useState<UserProfile | null>(null);
     const [isMounted, setIsMounted] = useState(false);
 
+    // --- Filter States ---
+    const [cityFilter, setCityFilter] = useState('');
+    const [casteFilter, setCasteFilter] = useState('');
+    const [occupationFilter, setOccupationFilter] = useState('');
+
     const router = useRouter();
     const hasFetched = useRef(false);
 
@@ -61,7 +66,6 @@ export default function MatchesPage() {
                 setMatches(profiles);
                 setCredits(res.data.credits ?? 0);
 
-                // Update selected profile if modal is open
                 if (selectedProfile) {
                     const updated = profiles.find((p: UserProfile) => p._id === selectedProfile._id);
                     if (updated) setSelectedProfile(updated);
@@ -84,6 +88,25 @@ export default function MatchesPage() {
         }
     }, [loadData]);
 
+    // --- Dynamic Filter Options ---
+    const filterOptions = useMemo(() => {
+        const cities = Array.from(new Set(matches.map(m => m.city).filter(Boolean)));
+        const castes = Array.from(new Set(matches.map(m => m.caste).filter(Boolean)));
+        const occupations = Array.from(new Set(matches.map(m => m.occupation).filter(Boolean)));
+        return { cities, castes, occupations };
+    }, [matches]);
+
+    // --- Filtered Profiles Logic ---
+    const filteredMatches = useMemo(() => {
+        return matches.filter(profile => {
+            return (
+                (cityFilter === '' || profile.city === cityFilter) &&
+                (casteFilter === '' || profile.caste === casteFilter) &&
+                (occupationFilter === '' || profile.occupation === occupationFilter)
+            );
+        });
+    }, [matches, cityFilter, casteFilter, occupationFilter]);
+
     const handleUnlock = async (id: string) => {
         const token = localStorage.getItem("userToken");
         if (!token) {
@@ -91,15 +114,12 @@ export default function MatchesPage() {
             router.push("/login");
             return;
         }
-
         if (credits <= 0) {
             toast.error("Low Credits! Please upgrade your package.");
             router.push('/Packages');
             return;
         }
-
         if (!confirm("This will use 1 Credit. Do you want to continue?")) return;
-
         try {
             const res = await unlockProfile(id);
             if (res.data?.success) {
@@ -115,7 +135,6 @@ export default function MatchesPage() {
 
     return (
         <div className="min-h-screen bg-[#fcfafa] pb-20 selection:bg-[#4a1111] selection:text-white">
-            {/* Header / Stats Bar */}
             <nav className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex flex-col">
@@ -148,10 +167,53 @@ export default function MatchesPage() {
             </nav>
 
             <main className="max-w-7xl mx-auto px-6 pt-10">
-                <div className="mb-10 flex items-end justify-between">
+                <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
                         <h2 className="text-4xl font-black text-[#4a1111] tracking-tighter italic">Found Your Matches</h2>
-                        <p className="text-gray-400 font-medium mt-1">Showing verified profiles based on your preference</p>
+                        <p className="text-gray-400 font-medium mt-1">Showing {filteredMatches.length} verified profiles</p>
+                    </div>
+
+                    {/* --- Filter Bar UI --- */}
+                    <div className="flex flex-wrap items-center gap-3 bg-white p-3 rounded-[2rem] shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-2 px-3 text-[#4a1111] font-bold text-xs uppercase">
+                            <FiFilter /> Filter By:
+                        </div>
+
+                        <select
+                            value={cityFilter}
+                            onChange={(e) => setCityFilter(e.target.value)}
+                            className="bg-gray-50 border-none rounded-full px-4 py-2 text-xs font-bold text-gray-600 focus:ring-2 focus:ring-[#c19206] outline-none"
+                        >
+                            <option value="">All Cities</option>
+                            {filterOptions.cities.map(city => <option key={city} value={city}>{city}</option>)}
+                        </select>
+
+                        <select
+                            value={casteFilter}
+                            onChange={(e) => setCasteFilter(e.target.value)}
+                            className="bg-gray-50 border-none rounded-full px-4 py-2 text-xs font-bold text-gray-600 focus:ring-2 focus:ring-[#c19206] outline-none"
+                        >
+                            <option value="">All Castes</option>
+                            {filterOptions.castes.map(caste => <option key={caste} value={caste}>{caste}</option>)}
+                        </select>
+
+                        <select
+                            value={occupationFilter}
+                            onChange={(e) => setOccupationFilter(e.target.value)}
+                            className="bg-gray-50 border-none rounded-full px-4 py-2 text-xs font-bold text-gray-600 focus:ring-2 focus:ring-[#c19206] outline-none"
+                        >
+                            <option value="">All Professions</option>
+                            {filterOptions.occupations.map(occ => <option key={occ} value={occ}>{occ}</option>)}
+                        </select>
+
+                        {(cityFilter || casteFilter || occupationFilter) && (
+                            <button
+                                onClick={() => { setCityFilter(''); setCasteFilter(''); setOccupationFilter(''); }}
+                                className="text-[10px] font-black uppercase text-red-500 hover:underline px-2"
+                            >
+                                Clear
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -167,7 +229,7 @@ export default function MatchesPage() {
                         animate={{ opacity: 1, y: 0 }}
                         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10"
                     >
-                        {matches.map((match) => (
+                        {filteredMatches.map((match) => (
                             <motion.div
                                 key={match._id}
                                 whileHover={{ y: -10 }}
@@ -180,20 +242,17 @@ export default function MatchesPage() {
                                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-[#4a1111]/90 via-transparent to-transparent opacity-80" />
-
                                     <div className="absolute top-6 left-6 flex flex-col gap-2">
                                         <div className="bg-white/90 backdrop-blur-md px-4 py-1.5 rounded-full flex items-center gap-2 shadow-xl">
                                             <FiShield className="text-green-600 text-xs" />
                                             <span className="text-[10px] font-black text-[#4a1111] uppercase tracking-widest">Verified</span>
                                         </div>
                                     </div>
-
                                     {match.isLocked && (
                                         <div className="absolute top-6 right-6 bg-black/50 backdrop-blur-md p-2.5 rounded-2xl text-white shadow-2xl">
                                             <FiLock size={18} />
                                         </div>
                                     )}
-
                                     <div className="absolute bottom-8 left-8 text-white">
                                         <h3 className="text-3xl font-black italic tracking-tighter mb-1">{match.name}, {match.age}</h3>
                                         <div className="flex items-center gap-2 text-xs font-bold opacity-90 uppercase tracking-widest">
@@ -201,7 +260,6 @@ export default function MatchesPage() {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="p-8 mt-auto space-y-4">
                                     <div className="flex items-center justify-between text-sm border-b border-gray-50 pb-4">
                                         <div className="text-center">
@@ -214,7 +272,6 @@ export default function MatchesPage() {
                                             <p className="font-black text-[#4a1111] truncate max-w-[100px]">{match.occupation || 'N/A'}</p>
                                         </div>
                                     </div>
-
                                     <button
                                         onClick={() => setSelectedProfile(match)}
                                         className={`w-full py-5 rounded-[2rem] font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!match.isLocked
@@ -229,9 +286,14 @@ export default function MatchesPage() {
                         ))}
                     </motion.div>
                 )}
+                {!loading && filteredMatches.length === 0 && (
+                    <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-gray-200">
+                        <p className="text-gray-400 font-bold italic">No profiles match your current filter selection.</p>
+                        <button onClick={() => { setCityFilter(''); setCasteFilter(''); setOccupationFilter(''); }} className="mt-4 text-[#c19206] font-black uppercase text-xs underline">Reset All Filters</button>
+                    </div>
+                )}
             </main>
 
-            {/* Profile Modal */}
             <AnimatePresence>
                 {selectedProfile && (
                     <motion.div
@@ -246,7 +308,6 @@ export default function MatchesPage() {
                             exit={{ scale: 0.9, y: 50 }}
                             className="bg-white w-full max-w-5xl rounded-[4rem] overflow-hidden shadow-2xl max-h-[90vh] overflow-y-auto relative no-scrollbar"
                         >
-                            {/* Modal Header */}
                             <div className="relative h-80 md:h-[400px]">
                                 <img src={selectedProfile.mainImage} className="w-full h-full object-cover" alt="Profile" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
@@ -264,7 +325,6 @@ export default function MatchesPage() {
 
                             <div className="p-10 md:p-16">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                                    {/* Info Left */}
                                     <div className="lg:col-span-2 space-y-12">
                                         <div>
                                             <h4 className="flex items-center gap-3 text-2xl font-black text-[#4a1111] mb-6 italic">
@@ -273,10 +333,17 @@ export default function MatchesPage() {
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                 <DetailBox label="Father Name" value={selectedProfile.fatherName} />
                                                 <DetailBox label="Caste" value={selectedProfile.caste} />
+                                                <DetailBox label="City" value={selectedProfile.city} />
                                                 <DetailBox label="Sect/Maslak" value={selectedProfile.sect} />
                                                 <DetailBox label="Marital Status" value={selectedProfile.maritalStatus} />
                                                 <DetailBox label="Mother Tongue" value={selectedProfile.motherTongue} />
                                                 <DetailBox label="Education" value={selectedProfile.education} />
+                                                <DetailBox label="Occupation" value={selectedProfile.occupation} />
+                                                <DetailBox label="Income" value={selectedProfile.monthlyIncome} />
+                                                <DetailBox label="Requirements" value={selectedProfile.requirements} />
+                                                <DetailBox label="About" value={selectedProfile.about} />
+                                                <DetailBox label="House Size" value={selectedProfile.houseSize} />
+                                                <DetailBox label="House Type" value={selectedProfile.houseType} />
                                             </div>
                                         </div>
 
@@ -303,7 +370,6 @@ export default function MatchesPage() {
                                         )}
                                     </div>
 
-                                    {/* Info Right (Stats & Requirements) */}
                                     <div className="space-y-8">
                                         <div className="bg-[#4a1111] p-10 rounded-[3rem] text-white shadow-2xl">
                                             <h5 className="font-black uppercase tracking-widest text-[10px] text-yellow-500 mb-6">Financial & Living</h5>
@@ -324,7 +390,6 @@ export default function MatchesPage() {
                                     </div>
                                 </div>
 
-                                {/* Floating Footer Button */}
                                 <div className="mt-16 sticky bottom-0 pt-6 pb-2 bg-white/80 backdrop-blur-md">
                                     {!selectedProfile.isLocked ? (
                                         <div className="flex flex-col md:flex-row items-center gap-4">
@@ -367,7 +432,6 @@ export default function MatchesPage() {
     );
 }
 
-// Light Box Component
 function DetailBox({ label, value }: { label: string, value?: string }) {
     return (
         <div className="bg-white border border-gray-100 p-6 rounded-[2rem] hover:shadow-md transition-shadow group">
@@ -379,7 +443,6 @@ function DetailBox({ label, value }: { label: string, value?: string }) {
     );
 }
 
-// Dark Box Component for Financials
 function DetailBoxDark({ label, value }: { label: string, value?: string }) {
     return (
         <div className="border-b border-white/10 pb-4">
@@ -389,4 +452,4 @@ function DetailBoxDark({ label, value }: { label: string, value?: string }) {
             </p>
         </div>
     );
-} 
+}

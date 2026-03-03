@@ -11,7 +11,7 @@ interface PublicProfile {
     age: number;
     gender: string;
     city: string;
-    profession: string;
+    occupation: string;
     caste: string;
     sect: string;
 }
@@ -94,7 +94,7 @@ export default function PublicProfiles() {
                                     <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
                                         <div className="flex items-center gap-3 text-gray-600">
                                             <FiBriefcase className="text-[#c19206]" />
-                                            <span className="font-medium">{profile.profession || "Private Job"}</span>
+                                            <span className="font-medium">{profile.occupation || "Private Job"}</span>
                                         </div>
                                         <div className="flex items-center gap-3 text-gray-600">
                                             <span className="text-[#c19206] font-black text-xs">SECT:</span>
