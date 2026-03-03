@@ -7,46 +7,60 @@ export default function FindMatch() {
     const [profiles, setProfiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Backend Base URL
-    const BASE_URL = "http://localhost:5000";
+    // FIX: Base URL se trailing slash hatane ka logic taake double slashes na banein
+    const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
-    // Database se data lane ka function
     useEffect(() => {
         const fetchProfiles = async () => {
             try {
-                // Token lena taake backend ko pata chale login kaun hai
-                const token = localStorage.getItem("userToken");
+                // Client-side par token lena
+                const token = typeof window !== 'undefined' ? localStorage.getItem("userToken") : null;
 
-                // Hum authenticated route use karenge taake opposite gender mile
-                const res = await fetch(`${BASE_URL}/api/users/matches`, {
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
+                const headers: HeadersInit = {
+                    "Content-Type": "application/json"
+                };
+                if (token) headers["Authorization"] = `Bearer ${token}`;
+
+                // FIX: API_BASE ke mutabiq endpoint call
+                // Agar API_BASE mein '/api' shamil hai to double nahi hoga
+                const fetchUrl = API_BASE.endsWith('/api')
+                    ? `${API_BASE}/users/matches`
+                    : `${API_BASE}/api/users/matches`;
+
+                const res = await fetch(fetchUrl, {
+                    headers: headers
                 });
 
-                if (!res.ok) throw new Error("Failed to fetch matches");
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
                 const data = await res.json();
-
-                // Data mapping handle karna (Object vs Array)
                 const rawProfiles = Array.isArray(data) ? data : (data.profiles || []);
 
                 // Backend data ko ProfileCard ke props ke mutabiq format karna
-                const formattedData = rawProfiles.map((p: any) => ({
-                    id: p._id,
-                    title: p.name || p.title || "No Name",
-                    age: p.age || "N/A",
-                    status: p.maritalStatus || p.status || 'Single',
-                    gender: p.gender || "Not specified",
-                    city: p.city || "Pakistan",
-                    // Image URL construction logic
-                    image: p.mainImage
-                        ? (p.mainImage.startsWith('http') ? p.mainImage : `${BASE_URL}${p.mainImage}`)
-                        : (p.gallery && p.gallery.length > 0
-                            ? (p.gallery[0].startsWith('http') ? p.gallery[0] : `${BASE_URL}${p.gallery[0]}`)
-                            : '/placeholder.jpg')
-                }));
+                const formattedData = rawProfiles.map((p: any) => {
+                    // Root URL nikalna (sirf domain) taake static images load hon
+                    const rootURL = API_BASE.replace('/api', '').replace(/\/$/, "");
+
+                    const getFullUrl = (path: string) => {
+                        if (!path) return '/placeholder.jpg';
+                        if (path.startsWith('http')) return path;
+                        // Path ke shuru mein slash handle karna
+                        const cleanPath = path.startsWith('/') ? path : `/${path}`;
+                        return `${rootURL}${cleanPath}`;
+                    };
+
+                    return {
+                        id: p._id,
+                        title: p.name || p.title || "No Name",
+                        age: p.age || "N/A",
+                        status: p.maritalStatus || p.status || 'Single',
+                        gender: p.gender || "Not specified",
+                        city: p.city || "Pakistan",
+                        image: p.mainImage
+                            ? getFullUrl(p.mainImage)
+                            : (p.gallery && p.gallery.length > 0 ? getFullUrl(p.gallery[0]) : '/placeholder.jpg')
+                    };
+                });
 
                 setProfiles(formattedData);
             } catch (err) {
@@ -57,7 +71,7 @@ export default function FindMatch() {
         };
 
         fetchProfiles();
-    }, []);
+    }, [API_BASE]);
 
     return (
         <div className="min-h-screen bg-gray-50 pt-10 pb-20">

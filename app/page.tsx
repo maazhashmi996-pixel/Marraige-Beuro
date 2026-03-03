@@ -1,16 +1,23 @@
-import About from "@/Components/sections/About";
-import Contact from "@/Components/sections/Contact";
-import FeaturedProfiles from "@/Components/sections/FeaturedProfiles";
-import HeroSlider from "@/Components/sections/HeroSlider";
-import { div } from "framer-motion/client";
-import Image from "next/image";
+"use client"; // <--- Ye line ab poore page ko client-side bana degi
+
+import dynamic from 'next/dynamic';
+
+// Simple imports use karein, dynamic ki zaroorat nahi padegi agar "use client" upar hai
+// Lekin agar abhi bhi masla kare toh aise hi rehne dein:
+const HeroSlider = dynamic(() => import("@/Components/sections/HeroSlider"), { ssr: false });
+const About = dynamic(() => import("@/Components/sections/About"), { ssr: false });
+const WhyAsaanRishta = dynamic(() => import("@/Components/sections/WhyAsaanRishta"), { ssr: false });
+const VIPPersonalizedMatching = dynamic(() => import("@/Components/sections/VIPPersonalizedMatching"), { ssr: false });
+const Contact = dynamic(() => import("@/Components/sections/Contact"), { ssr: false });
 
 export default function Home() {
   return (
-    <div>
+    <main>
       <HeroSlider />
       <About />
+      <WhyAsaanRishta />
+      <VIPPersonalizedMatching />
       <Contact />
-    </div>
+    </main>
   );
 }
