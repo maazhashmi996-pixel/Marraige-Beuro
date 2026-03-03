@@ -8,43 +8,23 @@ interface ProfileCardProps {
 }
 
 const ProfileCard = ({ profile }: ProfileCardProps) => {
-    // --- Image URL Logic ---
-    const BACKEND_URL = "https://marraige-beuro-backend-production.up.railway.app";
-    let imageUrl = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500&auto=format&fit=crop';
-
-    if (profile && (profile.mainImage || profile.image)) {
-        const rawImage = profile.mainImage || profile.image;
-
-        if (typeof rawImage === 'string') {
-            // Case 1: Agar image Base64 hai ya absolute URL (http)
-            if (rawImage.startsWith('data:') || rawImage.startsWith('http')) {
-                imageUrl = rawImage;
-            }
-            // Case 2: Agar sirf path ya filename hai
-            else {
-                const cleanPath = rawImage.startsWith('/') ? rawImage : `/${rawImage}`;
-                imageUrl = `${BACKEND_URL}${cleanPath}`;
-            }
-        }
-    }
-
+    // Backend schema ke mutabiq values handle karna
+    // In fields ko hum hamesha dikhayenge (Publicly visible)
     const displayTitle = profile.name || "User Profile";
+    const imageUrl = profile.mainImage || profile.image || '/placeholder.jpg';
 
     return (
         <Link href={`/Profiles/view?id=${profile._id}`} className="block">
             <div className="overflow-hidden rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 group cursor-pointer">
 
                 {/* 1. Image Section */}
-                <div className="relative h-72 w-full overflow-hidden bg-slate-100">
+                <div className="relative h-72 w-full overflow-hidden">
                     <img
                         src={imageUrl}
                         alt={displayTitle}
-                        loading="lazy"
-                        className={`absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 ${profile.isLocked ? 'blur-[5px]' : ''}`}
+                        className={`h-full w-full object-cover transition-transform duration-700 group-hover:scale-110 ${profile.isLocked ? 'blur-[1px]' : ''}`}
                         onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.onerror = null;
-                            target.src = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500&auto=format&fit=crop';
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=500&auto=format&fit=crop';
                         }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
@@ -55,7 +35,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                     </div>
                 </div>
 
-                {/* 2. Content Section */}
+                {/* 2. Content Section (Ye Data Publically nazar ayega) */}
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xl font-black text-slate-800 tracking-tight leading-tight truncate mr-2">
@@ -100,7 +80,7 @@ const ProfileCard = ({ profile }: ProfileCardProps) => {
                         </div>
                     </div>
 
-                    {/* 3. Footer Section */}
+                    {/* 3. Footer Section (Indicating Lock Status) */}
                     <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between group/btn">
                         <span className={`text-[10px] font-black uppercase tracking-widest ${profile.isLocked ? 'text-orange-500' : 'text-slate-400'}`}>
                             {profile.isLocked ? "Premium Unlock Required" : "Contact Info Unlocked"}

@@ -334,144 +334,130 @@ function PendingList({ users, onOpenView, onReject }: any) {
     );
 }
 
+/* ================= COMPONENT: MANAGE PROFILES ================= */
 function ManageProfilesList({ profiles, onDelete, onEdit }: any) {
-    const BACKEND_URL = "https://marraige-beuro-backend-production.up.railway.app";
-
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {profiles.map((p: any) => {
-                // --- IMAGE LOGIC FIX ---
-                let imageSrc = "/placeholder.jpg"; // Default fallback
-
-                if (p.mainImage && p.mainImage.trim() !== "") {
-                    // Agar image base64 hai ya pehle se full URL hai
-                    if (p.mainImage.startsWith('data:image') || p.mainImage.startsWith('http')) {
-                        imageSrc = p.mainImage;
-                    } else {
-                        // Agar sirf filename hai to backend path jodo
-                        imageSrc = `${BACKEND_URL}/uploads/${p.mainImage}`;
-                    }
-                }
-
-                return (
-                    <div key={p._id} className="bg-white p-6 rounded-[2.5rem] border shadow-sm flex items-center gap-4 hover:shadow-xl transition-all group">
-
-                        {/* Image Wrapper */}
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 shadow-md border border-gray-50">
-                            <img
-                                src={imageSrc}
-                                className="w-full h-full object-cover"
-                                alt={p.name || "Profile"}
-                                // Fallback agar image load na ho (Network issue or broken link)
-                                onError={(e: any) => {
-                                    e.target.onerror = null;
-                                    e.target.src = "https://placehold.co/200x200?text=No+Photo";
-                                }}
-                            />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-black text-[#4a1111] truncate">{p.name}</h4>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase truncate">
-                                {p.city || "City N/A"} • {p.caste || "Caste N/A"}
-                            </p>
-
-                            <div className="flex gap-2 mt-3">
-                                <button
-                                    onClick={() => onEdit(p)}
-                                    className="flex-1 py-2 bg-gray-100 text-[#4a1111] rounded-xl font-bold text-[10px] uppercase hover:bg-[#c19206] hover:text-white transition-all flex items-center justify-center gap-1"
-                                >
-                                    <FiEdit3 /> Edit
-                                </button>
-                                <button
-                                    onClick={() => onDelete(p._id)}
-                                    className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
-                                >
-                                    <FiTrash2 size={14} />
-                                </button>
-                            </div>
+            {profiles.map((p: any) => (
+                <div key={p._id} className="bg-white p-6 rounded-[2.5rem] border shadow-sm flex items-center gap-4 hover:shadow-xl transition-all group">
+                    <img src={p.mainImage} className="w-20 h-20 rounded-2xl object-cover shadow-md" alt="" />
+                    <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-[#4a1111] truncate">{p.name}</h4>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase truncate">{p.city} • {p.caste}</p>
+                        <div className="flex gap-2 mt-3">
+                            <button onClick={() => onEdit(p)} className="flex-1 py-2 bg-gray-100 text-[#4a1111] rounded-xl font-bold text-[10px] uppercase hover:bg-[#c19206] hover:text-white transition-all flex items-center justify-center gap-1"><FiEdit3 /> Edit</button>
+                            <button onClick={() => onDelete(p._id)} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"><FiTrash2 size={14} /></button>
                         </div>
                     </div>
-                );
-            })}
+                </div>
+            ))}
         </div>
     );
 }
+
 /* ================= COMPONENT: CREATE PROFILE FORM ================= */
 function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onClose, setActiveTab }: any) {
-    // 1. Defaults fields wahi hain jo aapne di hain
-    const defaults = {
+    const [formData, setFormData] = useState<any>(() => ({
         name: "", fatherName: "", email: "", age: "", gender: "Male", city: "", caste: "", sect: "",
         occupation: "", monthlyIncome: "", education: "", maritalStatus: "Never Married", familyDetails: "",
         motherTongue: "", houseType: "Own", houseSize: "", requirements: "", about: "",
-        mainImage: "", password: "", phone: "", disability: "", height: "", weight: "", package: "Basic Plan", gallery: []
-    };
+        mainImage: "", password: "", phone: "", disability: "", height: "", weight: "", package: "Basic Plan",
+        gallery: []
+    }));
 
-    // 2. Updated State: Jo Edit ke waqt initialData load karegi
-    const [formData, setFormData] = useState<any>(() => {
-        if (isEdit && initialData) {
-            return { ...defaults, ...initialData };
-        }
-        return defaults;
+    // Previews dikhane ke liye extra state
+    const [previews, setPreviews] = useState<{ main: string, gallery: string[] }>({
+        main: initialData?.mainImage || "",
+        gallery: initialData?.gallery || []
     });
 
     const [uploading, setUploading] = useState(false);
 
-    // 3. handleFileChange: Functional state update ke saath (taake images mix na hon)
-    const handleFileChange = async (e: any, type: 'main' | 'gallery') => {
-        const files = e.target.files;
+    // Jab Edit mode ho toh data load karne ke liye
+    useEffect(() => {
+        if (isEdit && initialData) {
+            setFormData({ ...initialData });
+            setPreviews({
+                main: initialData.mainImage || "",
+                gallery: initialData.gallery || []
+            });
+        }
+    }, [isEdit, initialData]);
+
+    const handleFileChange = (e: any, type: 'main' | 'gallery') => {
+        const files = Array.from(e.target.files) as File[];
         if (!files.length) return;
 
-        setUploading(true);
-        try {
-            for (let file of files) {
+        if (type === 'main') {
+            const file = files[0];
+            setFormData({ ...formData, mainFile: file }); // Original File for upload
+            const reader = new FileReader();
+            reader.onloadend = () => setPreviews(prev => ({ ...prev, main: reader.result as string }));
+            reader.readAsDataURL(file);
+        } else {
+            setFormData({ ...formData, galleryFiles: [...(formData.galleryFiles || []), ...files] });
+            files.forEach(file => {
                 const reader = new FileReader();
+                reader.onloadend = () => setPreviews(prev => ({ ...prev, gallery: [...prev.gallery, reader.result as string] }));
                 reader.readAsDataURL(file);
-                reader.onloadend = () => {
-                    if (type === 'main') {
-                        setFormData((prev: any) => ({ ...prev, mainImage: reader.result }));
-                    } else {
-                        setFormData((prev: any) => ({
-                            ...prev,
-                            gallery: [...prev.gallery, reader.result]
-                        }));
-                    }
-                };
-            }
-            toast.success("Images Selected");
-        } catch (err) {
-            toast.error("Upload failed");
-        } finally {
-            setUploading(false);
+            });
         }
+        toast.success("Images Selected Locally");
     };
 
-    // 4. handleSubmit: Aapka original logic (unchanged)
     const handleSubmit = async (e: any) => {
         e.preventDefault();
-        const token = localStorage.getItem("userToken");
+        const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+        const loadingToast = toast.loading(isEdit ? "Updating Profile..." : "Publishing Profile...");
 
         try {
+            const data = new FormData();
+
+            // 1. Saara Text Data Append karein
+            Object.keys(formData).forEach(key => {
+                // Files aur purani images skip karein (wo niche handle honge)
+                if (!['mainImage', 'gallery', 'mainFile', 'galleryFiles', '_id', '__v', 'userId'].includes(key)) {
+                    data.append(key, formData[key] || "");
+                }
+            });
+
+            // 2. Main Image append karein (Agar nayi select ki hai)
+            if (formData.mainFile) {
+                data.append('images', formData.mainFile);
+            }
+
+            // 3. Gallery Images append karein
+            if (formData.galleryFiles && formData.galleryFiles.length > 0) {
+                formData.galleryFiles.forEach((file: File) => {
+                    data.append('images', file);
+                });
+            }
+
             const method = isEdit ? "PUT" : "POST";
             const url = isEdit ? `${API_URL}/admin/profile/${initialData._id}` : `${API_URL}/admin/profile/manual`;
 
             const res = await fetch(url, {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
+                    // YAHAN CONTENT-TYPE NAHI LAGANA (V.IMP)
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: data
             });
 
-            if (res.ok) {
-                toast.success(isEdit ? "Profile Updated!" : "Profile Created Successfully!");
+            const result = await res.json();
+
+            if (res.ok && result.success) {
+                toast.success(isEdit ? "Profile Updated!" : "Profile Created!", { id: loadingToast });
                 refresh();
                 if (!isEdit) setActiveTab("manage");
                 if (onClose) onClose();
+            } else {
+                throw new Error(result.error || result.message || "Submission Failed");
             }
-        } catch (err) {
-            toast.error("Process failed");
+        } catch (err: any) {
+            console.error("Submit Error:", err);
+            toast.error(err.message, { id: loadingToast });
         }
     };
 
@@ -497,13 +483,11 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
                     <div className="md:col-span-3 p-6 bg-gray-50 rounded-[2rem] border-2 border-dashed flex items-center justify-center relative overflow-hidden">
                         <div className="text-center">
                             <FiUploadCloud className="text-3xl text-gray-300 mx-auto mb-2" />
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gallery Upload ({formData.gallery?.length || 0})</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Gallery Upload ({formData.gallery.length})</p>
                             <input type="file" multiple onChange={(e) => handleFileChange(e, 'gallery')} className="absolute inset-0 opacity-0 cursor-pointer" />
                         </div>
                     </div>
                 </div>
-
-                {/* All Fields (Exactly as you provided) */}
                 <InputField label="Full Name" value={formData.name} onChange={(v: string) => setFormData({ ...formData, name: v })} />
                 <InputField label="Father Name" value={formData.fatherName} onChange={(v: string) => setFormData({ ...formData, fatherName: v })} />
                 <InputField label="Email (Required)" type="email" value={formData.email} onChange={(v: string) => setFormData({ ...formData, email: v })} />
@@ -516,10 +500,11 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
                 <InputField label="City" value={formData.city} onChange={(v: string) => setFormData({ ...formData, city: v })} />
                 <InputField
                     label="Family Detail (e.g. 2 Brothers, 1 Sister)"
-                    value={formData.familyDetails}
+                    value={formData.familyDetails
+                    }
                     onChange={(v: string) => setFormData({ ...formData, familyDetails: v })}
                 />
-
+                {/* Background Details */}
                 <h3 className="col-span-full font-bold text-lg border-b pb-2 mt-4">Background & Job</h3>
                 <InputField label="Caste" value={formData.caste} onChange={(v: string) => setFormData({ ...formData, caste: v })} />
                 <InputField label="Sect" value={formData.sect} onChange={(v: string) => setFormData({ ...formData, sect: v })} />
@@ -528,13 +513,13 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
                 <InputField label="Occupation" value={formData.occupation} onChange={(v: string) => setFormData({ ...formData, occupation: v })} />
                 <InputField label="Monthly Income" value={formData.monthlyIncome} onChange={(v: string) => setFormData({ ...formData, monthlyIncome: v })} />
 
+                {/* Physical & House Details */}
                 <h3 className="col-span-full font-bold text-lg border-b pb-2 mt-4">Physical & House Details</h3>
                 <InputField label="Height" value={formData.height} onChange={(v: string) => setFormData({ ...formData, height: v })} />
                 <InputField label="Weight" value={formData.weight} onChange={(v: string) => setFormData({ ...formData, weight: v })} />
                 <InputField label="House Type (e.g. Own/Rent)" value={formData.houseType} onChange={(v: string) => setFormData({ ...formData, houseType: v })} />
                 <InputField label="House Size (e.g. 5 Marla)" value={formData.houseSize} onChange={(v: string) => setFormData({ ...formData, houseSize: v })} />
                 <InputField label="Disability (If any)" value={formData.disability} onChange={(v: string) => setFormData({ ...formData, disability: v })} />
-
                 <div className="md:col-span-3">
                     <SelectField
                         label="Package Plan"
@@ -553,6 +538,7 @@ function CreateProfileForm({ API_URL, refresh, initialData, isEdit = false, onCl
         </form>
     );
 }
+
 /* ================= UI HELPERS ================= */
 function InputField({ label, value, onChange, type = "text" }: any) {
     return (
