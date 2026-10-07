@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiMapPin, FiBriefcase, FiUser, FiLock, FiExternalLink } from "react-icons/fi";
+import Link from "next/link"; // Client-side navigation ke liye
 
 /* ================= TYPES ================= */
 interface PublicProfile {
@@ -10,7 +11,7 @@ interface PublicProfile {
     age: number;
     gender: string;
     city: string;
-    profession: string;
+    occupation: string;
     caste: string;
     sect: string;
 }
@@ -19,10 +20,15 @@ export default function PublicProfiles() {
     const [profiles, setProfiles] = useState<PublicProfile[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Production URL setup
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
     useEffect(() => {
         const fetchProfiles = async () => {
             try {
-                const res = await fetch("http://localhost:5000/api/public/live-profiles");
+                // Production mein hamesha relative ya env URL use karein
+                const res = await fetch(`${API_BASE_URL}/public/live-profiles`);
+                if (!res.ok) throw new Error("Failed to fetch");
                 const data = await res.json();
                 setProfiles(data);
             } catch (err) {
@@ -32,7 +38,7 @@ export default function PublicProfiles() {
             }
         };
         fetchProfiles();
-    }, []);
+    }, [API_BASE_URL]);
 
     return (
         <section className="py-20 bg-white">
@@ -50,7 +56,9 @@ export default function PublicProfiles() {
 
                 {/* PROFILES GRID */}
                 {loading ? (
-                    <div className="text-center py-20 text-gray-400 font-bold animate-pulse">Loading amazing matches...</div>
+                    <div className="text-center py-20 text-gray-400 font-bold animate-pulse text-xl">
+                        Loading amazing matches...
+                    </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {profiles.map((profile) => (
@@ -60,14 +68,14 @@ export default function PublicProfiles() {
                                 className="bg-white border border-gray-100 rounded-[2.5rem] p-8 shadow-xl hover:shadow-2xl transition-all relative overflow-hidden group"
                             >
                                 {/* Gender Badge */}
-                                <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl font-bold text-xs uppercase tracking-widest text-white ${profile.gender === 'Male' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                                <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl font-bold text-xs uppercase tracking-widest text-white ${profile.gender?.toLowerCase() === 'male' ? 'bg-blue-500' : 'bg-pink-500'}`}>
                                     {profile.gender}
                                 </div>
 
                                 {/* Profile Details */}
                                 <div className="space-y-4">
                                     <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:bg-[#c19206]/10 transition-colors">
-                                        {profile.gender === 'Male' ? '🤵' : '👰'}
+                                        {profile.gender?.toLowerCase() === 'male' ? '🤵' : '👰'}
                                     </div>
 
                                     <h3 className="text-2xl font-black text-[#4a1111] leading-tight">
@@ -86,7 +94,7 @@ export default function PublicProfiles() {
                                     <div className="space-y-3 pt-4 border-t border-dashed border-gray-100">
                                         <div className="flex items-center gap-3 text-gray-600">
                                             <FiBriefcase className="text-[#c19206]" />
-                                            <span className="font-medium">{profile.profession || "Private Job"}</span>
+                                            <span className="font-medium">{profile.occupation || "Private Job"}</span>
                                         </div>
                                         <div className="flex items-center gap-3 text-gray-600">
                                             <span className="text-[#c19206] font-black text-xs">SECT:</span>
@@ -94,15 +102,16 @@ export default function PublicProfiles() {
                                         </div>
                                     </div>
 
-                                    {/* Action Button */}
-                                    <button
-                                        onClick={() => window.location.href = `/profile/${profile._id}`}
-                                        className="w-full mt-6 py-4 bg-gray-50 text-[#4a1111] rounded-2xl font-black flex items-center justify-center gap-2 group-hover:bg-[#4a1111] group-hover:text-white transition-all"
-                                    >
-                                        <FiLock className="group-hover:hidden" />
-                                        <FiExternalLink className="hidden group-hover:block" />
-                                        VIEW FULL PROFILE
-                                    </button>
+                                    {/* Action Button - Optimized with Link for Production */}
+                                    <Link href={`/profile/${profile._id}`}>
+                                        <button
+                                            className="w-full mt-6 py-4 bg-gray-50 text-[#4a1111] rounded-2xl font-black flex items-center justify-center gap-2 group-hover:bg-[#4a1111] group-hover:text-white transition-all"
+                                        >
+                                            <FiLock className="group-hover:hidden" />
+                                            <FiExternalLink className="hidden group-hover:block" />
+                                            VIEW FULL PROFILE
+                                        </button>
+                                    </Link>
                                 </div>
                             </motion.div>
                         ))}
@@ -114,12 +123,12 @@ export default function PublicProfiles() {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-[#c19206] rounded-full blur-[100px] opacity-20 -mr-32 -mt-32"></div>
                     <h3 className="text-3xl font-black text-white mb-4 relative z-10">Can't find what you're looking for?</h3>
                     <p className="text-white/70 mb-8 relative z-10 font-medium">Join 5,000+ members and find your perfect match today.</p>
-                    <button
-                        onClick={() => window.location.href = "/register"}
-                        className="bg-[#c19206] text-white px-10 py-4 rounded-full font-black text-lg shadow-lg hover:scale-105 transition-all relative z-10"
-                    >
-                        REGISTER MY PROFILE
-                    </button>
+
+                    <Link href="/register">
+                        <button className="bg-[#c19206] text-white px-10 py-4 rounded-full font-black text-lg shadow-lg hover:scale-105 transition-all relative z-10">
+                            REGISTER MY PROFILE
+                        </button>
+                    </Link>
                 </div>
             </div>
         </section>

@@ -1,4 +1,5 @@
 "use client";
+import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, EffectFade, Navigation } from 'swiper/modules';
 import { motion } from 'framer-motion';
@@ -15,12 +16,12 @@ const slides = [
         subtitle: "Trusted by thousands of families across Pakistan."
     },
     {
-        image: "/bride-2.jpg",
+        image: "/Bride-5.png",
         title: "Premium Matchmaking",
         subtitle: "Personalized service for your unique preferences."
     },
     {
-        image: "/bride-3.jpg",
+        image: "/Bride-6.png",
         title: "Begin Your Forever",
         subtitle: "Connecting hearts with dignity and respect."
     }
@@ -71,12 +72,16 @@ export default function HeroSlider() {
                                     transition={{ duration: 0.5, delay: 0.4 }}
                                     className="mt-8 flex gap-4"
                                 >
-                                    <button className="bg-[#4a1111] text-white px-8 py-4 rounded-full font-bold hover:bg-[#c19206] transition-all shadow-xl">
-                                        Get Started
-                                    </button>
-                                    <button className="bg-white/20 backdrop-blur-md text-white border border-white/40 px-8 py-4 rounded-full font-bold hover:bg-white hover:text-black transition-all">
-                                        Learn More
-                                    </button>
+                                    <Link href="/Packages">
+                                        <button className="bg-[#4a1111] text-white px-8 py-4 rounded-full font-bold hover:bg-[#c19206] transition-all shadow-xl">
+                                            Get Started
+                                        </button>
+                                    </Link>
+                                    <Link href="/Contact">
+                                        <button className="bg-white/20 backdrop-blur-md text-white border border-white/40 px-8 py-4 rounded-full font-bold hover:bg-white hover:text-black transition-all">
+                                            Learn More
+                                        </button>
+                                    </Link>
                                 </motion.div>
                             </div>
                         </div>

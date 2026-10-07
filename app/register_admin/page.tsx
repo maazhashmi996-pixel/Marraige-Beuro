@@ -1,24 +1,23 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FiLock, FiMail, FiAlertCircle, FiUser, FiCheckCircle } from "react-icons/fi";
+import { FiLock, FiMail, FiAlertCircle, FiUser, FiCheckCircle, FiShield } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function AdminRegisterPage() {
     const router = useRouter();
-    const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+    // 🔥 Added secretKey to formData
+    const [formData, setFormData] = useState({ name: "", email: "", password: "", secretKey: "" });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [isAdminExists, setIsAdminExists] = useState(false);
 
-    // Check if admin already exists on load
     useEffect(() => {
         const checkAdmin = async () => {
             try {
-                // Hum login route ya ek dummy request se check kar sakte hain
-                // Lekin behtar hai seedha register hit karein, backend block kar dega
+                // Initial check logic if needed
             } catch (err) {
                 console.error("Check failed");
             }
@@ -41,11 +40,11 @@ export default function AdminRegisterPage() {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Success! Redirect to login after 2 seconds
                 setIsAdminExists(true);
                 setTimeout(() => router.push("/login"), 2000);
             } else {
-                setError(data.message || "Admin setup failed. Maybe admin already exists?");
+                // Agar key galat hogi toh "Invalid Secret Key" yahan show hoga
+                setError(data.message || "Admin setup failed.");
                 if (data.message?.includes("exists")) setIsAdminExists(true);
             }
         } catch (err: any) {
@@ -81,8 +80,8 @@ export default function AdminRegisterPage() {
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold flex items-center gap-2 border border-red-100">
-                        <FiAlertCircle /> {error}
+                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-bold flex items-center gap-2 border border-red-100 text-left">
+                        <FiAlertCircle className="shrink-0" /> {error}
                     </div>
                 )}
 
@@ -129,9 +128,25 @@ export default function AdminRegisterPage() {
                         </div>
                     </div>
 
+                    {/* 🔥 NEW: SYSTEM SECRET KEY FIELD */}
+                    <div className="text-left">
+                        <label className="ml-4 text-[10px] font-bold text-red-500 uppercase">System Secret Key</label>
+                        <div className="relative mt-1">
+                            <FiShield className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400" />
+                            <input
+                                required
+                                type="text"
+                                placeholder="Enter Secret Key"
+                                className="w-full pl-12 pr-4 py-4 rounded-2xl bg-red-50 border border-red-100 outline-none focus:ring-2 ring-red-400 font-mono"
+                                onChange={(e) => setFormData({ ...formData, secretKey: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
                     <button
+                        type="submit"
                         disabled={loading}
-                        className="w-full py-5 bg-[#4a1111] text-white rounded-2xl font-black text-lg shadow-xl hover:bg-[#c19206] transition-all"
+                        className="w-full py-5 bg-[#4a1111] text-white rounded-2xl font-black text-lg shadow-xl hover:bg-[#c19206] transition-all disabled:opacity-50"
                     >
                         {loading ? "INITIALIZING..." : "CREATE ADMIN ACCOUNT"}
                     </button>
